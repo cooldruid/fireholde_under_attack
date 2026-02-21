@@ -1,0 +1,5 @@
+<div class="board" style="display: grid; width: 600px;">
+    @for(tile of board; track tile.id) {
+        <img [style]="getGridPosition(tile.id)" src="assets/tiles/square.png" style="height: 110px"/>
+    }
+</div>
