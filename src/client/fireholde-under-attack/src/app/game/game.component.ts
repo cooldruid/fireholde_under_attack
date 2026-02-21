@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ElementRef, QueryList, ViewChildren } from '@angular/core';
 import { Tile } from './data/tile';
 
 @Component({
@@ -29,7 +29,6 @@ export class GameComponent {
     {id: 18, type: 'shop'},
     {id: 19, type: 'shop'},
     {id: 20, type: 'shop'},
-    {id: 20, type: 'shop'},
     {id: 21, type: 'shop'},
     {id: 22, type: 'shop'},
     {id: 23, type: 'shop'},
@@ -40,18 +39,37 @@ export class GameComponent {
     {id: 28, type: 'shop'},
     {id: 29, type: 'shop'},
     {id: 30, type: 'shop'},
-    {id: 30, type: 'shop'},
     {id: 31, type: 'shop'},
     {id: 32, type: 'shop'},
     {id: 33, type: 'shop'},
     {id: 34, type: 'shop'},
     {id: 35, type: 'shop'},
-    {id: 36, type: 'shop'},
-    {id: 37, type: 'shop'},
-    {id: 38, type: 'shop'},
-    {id: 39, type: 'shop'},
-    {id: 40, type: 'shop'}
+    {id: 36, type: 'shop'}
   ]
+
+  @ViewChildren('tile') tiles!: QueryList<ElementRef>;
+
+  tileCoordinates: TilePosition[] = [];
+  tokenTransform: string = '';
+  player: Player = {
+    currentTile: 1
+  };
+
+  ngAfterViewInit() {
+    this.cacheTilePositions();
+    this.animateTo(1);
+  }
+
+  cacheTilePositions() {
+    this.tileCoordinates = this.tiles.map(tile => {
+      const rect = tile.nativeElement.getBoundingClientRect();
+
+      return {
+        x: rect.left,
+        y: rect.top
+      };
+    });
+  }
 
   getGridPosition(index: number) {
     const sideSize = 10;
@@ -75,8 +93,42 @@ export class GameComponent {
 
     return {display: 'none'};
   }
+
+  async movePlayer(squaresToMove: number) {
+    let current = this.player.currentTile;
+
+    const targetTile = this.player.currentTile + squaresToMove <= this.tiles.length ?
+      this.player.currentTile + squaresToMove :
+      squaresToMove - (this.tiles.length - this.player.currentTile);
+
+    while (current !== targetTile) {
+      current = (current + 1);
+      await this.animateTo(current);
+    }
+
+    this.player.currentTile = this.player.currentTile + squaresToMove;
+  }
+
+  animateTo(index: number): Promise<void> {
+    return new Promise(resolve => {
+      const coords = this.tileCoordinates[index];
+
+      this.tokenTransform =
+        `translate(${coords.x}px, ${coords.y}px)`;
+
+      setTimeout(resolve, 200);
+    });
+  }
 }
 
+interface TilePosition {
+  x: number;
+  y: number;
+}
+
+interface Player {
+  currentTile: number;
+}
 // 16 1/1
 // 17 2/1
 // 18 3/1
