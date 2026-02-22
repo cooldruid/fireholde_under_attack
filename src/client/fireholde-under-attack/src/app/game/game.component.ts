@@ -1,4 +1,4 @@
-import { Component, ElementRef, QueryList, ViewChildren } from '@angular/core';
+import { Component, ElementRef, QueryList, ViewChild, ViewChildren } from '@angular/core';
 import { Tile } from './data/tile';
 
 @Component({
@@ -102,16 +102,20 @@ export class GameComponent {
       squaresToMove - (this.tiles.length - this.player.currentTile);
 
     while (current !== targetTile) {
-      current = (current + 1);
+      current = current + 1;
+
+      if(current > this.tiles.length)
+        current = 1;
+
       await this.animateTo(current);
     }
 
-    this.player.currentTile = this.player.currentTile + squaresToMove;
+    this.player.currentTile = targetTile;
   }
 
   animateTo(index: number): Promise<void> {
     return new Promise(resolve => {
-      const coords = this.tileCoordinates[index];
+      const coords = this.tileCoordinates[index - 1];
 
       this.tokenTransform =
         `translate(${coords.x}px, ${coords.y}px)`;
