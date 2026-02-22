@@ -1,0 +1,16 @@
+<div class="board" [style]="{ display: 'grid', width: '1100px' }">
+    @for(tile of board; track tile.id) {
+        <img [style]="getGridPosition(tile.id)" 
+            src="assets/tiles/square.png"
+            #tile
+            style="height: 110px"/>
+    }
+    <img style="position: fixed; transition: transform 200ms linear; height: 80px;"
+        src="assets/wizard.png"
+        [style.transform]="tokenTransform"/>
+</div>
+
+<button style="position: absolute; bottom: 50px; right: 50px;"
+    (click)="movePlayer(5)">
+    Move 5
+</button>
