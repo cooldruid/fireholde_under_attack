@@ -1,140 +1,59 @@
-import { Component, ElementRef, QueryList, ViewChild, ViewChildren } from '@angular/core';
-import { Tile } from './data/tile';
+import { AfterViewInit, Component, ElementRef, QueryList, ViewChildren, signal } from '@angular/core';
+import { BOARD } from './data/board';
+import { Player } from './data/player';
+import { TilePosition } from './data/tile-position';
+import { GridPositionPipe } from './grid-position.pipe';
 
 @Component({
   selector: 'app-game',
   standalone: true,
+  imports: [GridPositionPipe],
   templateUrl: './game.component.html',
-  styleUrl: './game.component.scss'
+  styleUrl: './game.component.scss',
 })
-export class GameComponent {
-  board: Tile[] = [
-    {id: 1, type: 'start'},
-    {id: 2, type: 'shop'},
-    {id: 3, type: 'shop'},
-    {id: 4, type: 'shop'},
-    {id: 5, type: 'shop'},
-    {id: 6, type: 'shop'},
-    {id: 7, type: 'shop'},
-    {id: 8, type: 'shop'},
-    {id: 9, type: 'shop'},
-    {id: 10, type: 'shop'},
-    {id: 11, type: 'shop'},
-    {id: 12, type: 'shop'},
-    {id: 13, type: 'shop'},
-    {id: 14, type: 'shop'},
-    {id: 15, type: 'shop'},
-    {id: 16, type: 'shop'},
-    {id: 17, type: 'shop'},
-    {id: 18, type: 'shop'},
-    {id: 19, type: 'shop'},
-    {id: 20, type: 'shop'},
-    {id: 21, type: 'shop'},
-    {id: 22, type: 'shop'},
-    {id: 23, type: 'shop'},
-    {id: 24, type: 'shop'},
-    {id: 25, type: 'shop'},
-    {id: 26, type: 'shop'},
-    {id: 27, type: 'shop'},
-    {id: 28, type: 'shop'},
-    {id: 29, type: 'shop'},
-    {id: 30, type: 'shop'},
-    {id: 31, type: 'shop'},
-    {id: 32, type: 'shop'},
-    {id: 33, type: 'shop'},
-    {id: 34, type: 'shop'},
-    {id: 35, type: 'shop'},
-    {id: 36, type: 'shop'}
-  ]
+export class GameComponent implements AfterViewInit {
+  readonly board = BOARD;
 
   @ViewChildren('tile') tiles!: QueryList<ElementRef>;
 
-  tileCoordinates: TilePosition[] = [];
-  tokenTransform: string = '';
-  player: Player = {
-    currentTile: 1
-  };
+  private tileCoordinates: TilePosition[] = [];
+  readonly tokenTransform = signal('');
+  readonly player = signal<Player>({ currentTile: 1 });
 
-  ngAfterViewInit() {
+  ngAfterViewInit(): void {
     this.cacheTilePositions();
     this.animateTo(1);
   }
 
-  cacheTilePositions() {
+  private cacheTilePositions(): void {
     this.tileCoordinates = this.tiles.map(tile => {
       const rect = tile.nativeElement.getBoundingClientRect();
-
-      return {
-        x: rect.left,
-        y: rect.top
-      };
+      return { x: rect.left, y: rect.top };
     });
   }
 
-  getGridPosition(index: number) {
-    const sideSize = 10;
+  async movePlayer(squaresToMove: number): Promise<void> {
+    const totalTiles = this.tiles.length;
+    let current = this.player().currentTile;
 
-    if (index < sideSize) {
-      // bottom row
-      return { gridRow: sideSize, gridColumn: index % sideSize};
-    }
-    if (index < sideSize * 2 - 1) {
-      // right column
-      return { gridRow: 2 * sideSize - index, gridColumn: sideSize };
-    }
-    if (index < sideSize * 3 - 2) {
-      // top row
-      return { gridRow: 1, gridColumn: 3 * sideSize - index - 1 };
-    }
-    if (index < sideSize * 4 - 3) {
-      // left column
-      return { gridRow: (index % (3 * sideSize - 2)) + 1, gridColumn: 1 };
-    }
-
-    return {display: 'none'};
-  }
-
-  async movePlayer(squaresToMove: number) {
-    let current = this.player.currentTile;
-
-    const targetTile = this.player.currentTile + squaresToMove <= this.tiles.length ?
-      this.player.currentTile + squaresToMove :
-      squaresToMove - (this.tiles.length - this.player.currentTile);
+    const targetTile =
+      current + squaresToMove <= totalTiles
+        ? current + squaresToMove
+        : squaresToMove - (totalTiles - current);
 
     while (current !== targetTile) {
-      current = current + 1;
-
-      if(current > this.tiles.length)
-        current = 1;
-
+      current = (current % totalTiles) + 1;
       await this.animateTo(current);
     }
 
-    this.player.currentTile = targetTile;
+    this.player.update(p => ({ ...p, currentTile: targetTile }));
   }
 
-  animateTo(index: number): Promise<void> {
+  private animateTo(index: number): Promise<void> {
     return new Promise(resolve => {
       const coords = this.tileCoordinates[index - 1];
-
-      this.tokenTransform =
-        `translate(${coords.x}px, ${coords.y}px)`;
-
+      this.tokenTransform.set(`translate(${coords.x}px, ${coords.y}px)`);
       setTimeout(resolve, 200);
     });
   }
 }
-
-interface TilePosition {
-  x: number;
-  y: number;
-}
-
-interface Player {
-  currentTile: number;
-}
-// 16 1/1
-// 17 2/1
-// 18 3/1
-// 19 4/1
-// 20 5/1
