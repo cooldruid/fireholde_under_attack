@@ -1,10 +1,44 @@
+using FireholdeUnderAttack.Constants;
+
 namespace FireholdeUnderAttack.GameEngine;
 
 public class GameState
 {
-    public Guid Id { get; set; }
     public List<PlayerState> Players { get; set; } = [];
+    public GameStateType State { get; set; }
     public required BoardState Board { get; set; }
+
+    private GameState()
+    { }
+
+    public static GameState Create(Guid gameOwnerId)
+    {
+        return new GameState()
+        {
+            Players =
+            [
+                new()
+                {
+                    Id = gameOwnerId,
+                    CurrentTile = 1,
+                    Health = 50
+                }
+            ],
+            State = GameStateType.Initial,
+            Board = new()
+            {
+                Tiles = BoardConstants.Board
+            }
+        };
+    }
+}
+
+public enum GameStateType
+{
+    Initial = 0,
+    WaitingInLobby = 1,
+    Playing = 2,
+    Final = 3
 }
 
 public class PlayerState
@@ -23,5 +57,4 @@ public class TileState
 {
     public int Id { get; set; }
     public string Type { get; set; } = "";
-    
 }

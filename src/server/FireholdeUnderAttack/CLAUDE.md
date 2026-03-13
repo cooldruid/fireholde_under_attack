@@ -1,0 +1,105 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+```bash
+# Build
+dotnet build
+
+# Run (dev, port 5048)
+dotnet run --project FireholdeUnderAttack/FireholdeUnderAttack.csproj
+
+# Run tests
+dotnet test
+
+# Run a single test class
+dotnet test --filter "FullyQualifiedName~MoveCommandTests"
+```
+
+## Description
+
+Fireholde Under Attack is a 1-4 player board game. It is a cooperative game where each player plays as a wizard. They aim to defeat a boss which has different mechanics every game. Each player has health and money as well as cards with items and powers they get during the gameplay. On the board there are different tiles such as shops, treasures, etc.
+
+The rules of the game are not completely figured out so code that allows for rapid game rule changes is important.
+
+## Architecture
+
+ASP.NET Core 10.0 real-time multiplayer game server using a **command → saga → event** pipeline with SignalR for client broadcasting. Game state lives in-process for the lifetime of a game (no external storage).
+
+### Request flow
+
+1. Client posts to `POST /games/{gameId}/commands` with a `$type` discriminator in the JSON body
+2. `GameEndpoints` looks up the `GameInstance` and enqueues the command
+3. `GameInstance.ProcessLoop()` (background task per game, backed by `System.Threading.Channels`) dequeues and passes to `GameStateMachine`
+4. `GameStateMachine` looks up the registered `CommandSaga<TCommand>` for the command type and runs it
+5. The saga executes its steps in order: state guards → validation → state mutation → event emission
+6. `GameInstance` broadcasts each event to the SignalR group for that game via `IHubContext<EventHub>`
+
+### Saga pattern
+
+Each command is handled by a `CommandSaga<TCommand>` defined in `GameEngine/Sagas/`. The fluent API reads like English:
+
+```csharp
+new CommandSaga<MoveCommand>()
+    .WhenIn(Playing)          // state guard → CommandRejectedEvent on failure
+    .Validate(PlayerExists)   // predicate  → CommandRejectedEvent on failure
+    .Execute(RollDiceAndMove) // mutates GameState, can write to SagaContext
+    .Emit(PlayerMoved)        // reads state/context, appends an IEvent to the result
+```
+
+- Steps execute in registration order — multiple `.Execute` and `.Emit` calls are allowed and ordered
+- Guards (`.WhenIn`, `.Validate`) short-circuit: on failure they return a `CommandRejectedEvent` immediately and no further steps run
+- `SagaContext` is a per-execution typed key-value bag (`ctx.Set<T>` / `ctx.Get<T>`) for passing data between steps (e.g. a dice roll computed in `.Execute` and read in `.Emit`)
+- `[CallerArgumentExpression]` captures the method name passed to `.Validate` as the rejection reason automatically — no string needed
+
+### Adding a new command
+
+1. Create `Commands/XxxCommand.cs` implementing `ICommand`
+2. Add `[JsonDerivedType(typeof(XxxCommand), nameof(XxxCommand))]` to `ICommand`
+3. Create `GameEngine/Sagas/XxxCommandSaga.cs` with a static `Saga` property
+4. Register it in the `Sagas` dictionary in `GameStateMachine`
+5. Add a test class `Tests/GameEngine/XxxCommandTests.cs`
+
+### Adding a new event
+
+1. Create `Events/XxxEvent.cs` implementing `IEvent`
+2. Produce it from an `.Emit(...)` step in the relevant saga — no other wiring needed
+
+### Key components
+
+- **`GameEngine/Sagas/`** — one file per command; each owns its saga definition and all named step methods
+- **`GameEngine/Saga/CommandSaga.cs`** — fluent saga builder; step types: `GuardStep`, `MutateStep`, `EmitStep`
+- **`GameEngine/Saga/SagaContext.cs`** — per-execution data bag threaded through all steps
+- **`GameEngine/GameStateMachine.cs`** — static registry of `Type → ICommandSaga`; dispatches `Handle(ICommand)` to the right saga
+- **`GameEngine/GameInstance.cs`** — per-game actor; owns the command channel, `ProcessLoop`, and `BroadcastAsync` (serializes each event as JSON and pushes to the SignalR group)
+- **`GameEngine/GameState.cs`** — mutable state: player list, board, `GameStateType` (Initial → WaitingInLobby → Playing → Final)
+- **`Managers/GameInstanceManager.cs`** — DI singleton; factory and registry for `GameInstance` objects
+- **`Endpoints/GameEndpoints.cs`** — minimal API endpoint definitions; one `Map(IEndpointRouteBuilder)` per domain area
+- **`Hubs/EventHub.cs`** — SignalR hub; clients call `JoinGame`/`LeaveGame` to subscribe to a game group
+- **`Constants/BoardConstants.cs`** — 36-tile board definition
+
+### Command endpoint
+
+```
+POST /games/{gameId}/commands
+Content-Type: application/json
+
+{ "$type": "MoveCommand", "playerId": "..." }
+```
+
+Returns `202 Accepted`. Results arrive asynchronously via SignalR — the method name on the client matches the event type name (e.g. `MoveEvent`, `CommandRejectedEvent`).
+
+### Meta-actions vs game commands
+
+- **Game commands** (anything that mutates `GameState`, e.g. move, attack): go through the state machine / saga pipeline
+- **Infrastructure actions** (create game, anything that doesn't change `GameState`): handled directly in HTTP endpoints via `GameInstanceManager`
+- **Actions that change game state at lobby level** (join game, start game): go through the state machine — they are game rules
+- **Chat and other orthogonal concerns**: do not go through the state machine
+
+### Notable gaps (work in progress)
+
+- Tile types in `BoardConstants` are empty strings
+- `GameStateType` transitions (e.g. Initial → WaitingInLobby) are not enforced yet — no commands exist for lobby management
+- No strongly-typed SignalR hub client interface yet (`Hub<T>`) — planned for when non-event push messages are needed
