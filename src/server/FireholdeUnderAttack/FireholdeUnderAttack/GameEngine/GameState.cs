@@ -7,6 +7,9 @@ public class GameState
     public List<PlayerState> Players { get; set; } = [];
     public GameStateType State { get; set; }
     public required BoardState Board { get; set; }
+    public Guid? ActivePlayerId { get; set; }
+    public int ActivePlayerIndex { get; set; }
+    public int Round { get; set; }
 
     private GameState()
     { }
@@ -36,8 +39,8 @@ public class GameState
 public enum GameStateType
 {
     Initial = 0,
-    WaitingInLobby = 1,
-    Playing = 2,
+    PlayerTurn = 1,
+    VillainTurn = 2,
     Final = 3
 }
 

@@ -1,8 +1,12 @@
-import { AfterViewInit, Component, ElementRef, QueryList, ViewChildren, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, QueryList, ViewChildren, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+
 import { BOARD } from './data/board';
 import { Player } from './data/player';
 import { TilePosition } from './data/tile-position';
 import { GridPositionPipe } from './grid-position.pipe';
+import { GameHubService } from '../game-hub.service';
+import { PlayerIdentityService } from '../player-identity.service';
 
 @Component({
   selector: 'app-game',
@@ -11,7 +15,7 @@ import { GridPositionPipe } from './grid-position.pipe';
   templateUrl: './game.component.html',
   styleUrl: './game.component.scss',
 })
-export class GameComponent implements AfterViewInit {
+export class GameComponent implements AfterViewInit, OnDestroy {
   readonly board = BOARD;
 
   @ViewChildren('tile') tiles!: QueryList<ElementRef>;
@@ -20,9 +24,23 @@ export class GameComponent implements AfterViewInit {
   readonly tokenTransform = signal('');
   readonly player = signal<Player>({ currentTile: 1 });
 
+  private readonly hub = inject(GameHubService);
+
+  constructor() {
+    const nav = inject(Router).getCurrentNavigation();
+    const identity = inject(PlayerIdentityService);
+    const gameId: string = nav?.extras.state?.['gameId'] ?? '';
+
+    this.hub.connect(gameId, identity.playerId);
+  }
+
   ngAfterViewInit(): void {
     this.cacheTilePositions();
     this.animateTo(1);
+  }
+
+  ngOnDestroy(): void {
+    this.hub.disconnect();
   }
 
   private cacheTilePositions(): void {

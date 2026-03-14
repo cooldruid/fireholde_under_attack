@@ -15,6 +15,7 @@ public class GameInstance
     private GameState _state;
 
     public Guid Id { get; }
+    public GameState State => _state;
 
     public GameInstance(Guid gameOwnerId, IHubContext<EventHub> hubContext)
     {
@@ -38,6 +39,9 @@ public class GameInstance
                 var stateMachine = new GameStateMachine(_state);
                 var events = stateMachine.Handle(command);
                 await BroadcastAsync(events);
+
+                if (_state.State == GameStateType.VillainTurn)
+                    await Enqueue(new VillainTurnCommand { GameId = Id });
             }
             catch (Exception ex)
             {

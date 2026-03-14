@@ -1,0 +1,80 @@
+.lobby {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  box-sizing: border-box;
+}
+
+.panel {
+  background: rgba(62, 26, 2, 0.85);
+  border: 3px solid #5c2e08;
+  box-shadow: 6px 6px 0 #3d1a02;
+  padding: 24px;
+  width: 560px;
+}
+
+.panel-title {
+  font-family: 'Cinzel Decorative', serif;
+  color: #f5d080;
+  font-size: 20px;
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+.player-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: monospace;
+  font-size: 13px;
+  color: #f5d080;
+
+  th {
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 6px 10px;
+    border-bottom: 2px solid #5c2e08;
+    color: #c8841a;
+  }
+
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #5c2e0840;
+  }
+
+  .player-id {
+    font-size: 11px;
+  }
+}
+
+.invite {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.invite-label {
+  font-family: monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #c8841a;
+}
+
+.start-btn {
+  margin-top: 28px;
+  width: 100%;
+}
+
+.invite-code {
+  font-family: monospace;
+  font-size: 13px;
+  color: #f5d080;
+  background: #5c2e0840;
+  border: 1px solid #5c2e08;
+  padding: 8px 12px;
+  word-break: break-all;
+}

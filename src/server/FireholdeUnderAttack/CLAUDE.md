@@ -57,10 +57,23 @@ new CommandSaga<MoveCommand>()
 ### Adding a new command
 
 1. Create `Commands/XxxCommand.cs` implementing `ICommand`
-2. Add `[JsonDerivedType(typeof(XxxCommand), nameof(XxxCommand))]` to `ICommand`
+2. Add `[JsonDerivedType(typeof(XxxCommand), nameof(XxxCommand))]` to `ICommand` (skip for internal commands like `VillainTurnCommand`)
 3. Create `GameEngine/Sagas/XxxCommandSaga.cs` with a static `Saga` property
 4. Register it in the `Sagas` dictionary in `GameStateMachine`
 5. Add a test class `Tests/GameEngine/XxxCommandTests.cs`
+
+### Endpoint conventions
+
+- Request and response records live at the bottom of `GameEndpoints.cs`, named `XxxRequest` / `XxxResponse`
+- Endpoints that return data **must** use a typed response DTO — never return raw state objects or anonymous types
+- Only include fields the client actually needs at that point in the flow (e.g. don't return board/health/tile data until the game starts)
+
+### Testing conventions
+
+- **Naming:** `<ClassUnderTest>_On<Command>_<WhatIsBeingTested>` — e.g. `GameStateMachine_OnMoveCommand_MovesPlayerAndAdvancesToNextPlayer`
+- **Scope:** Prefer broad tests that cover the complete flow end-to-end (events emitted, state mutations, turn advancement). Narrow single-assertion tests are acceptable only for specific edge cases.
+- **Structure:** Always use `// Arrange`, `// Act`, `// Assert` comments.
+- **Player-action saga guard pattern:** Every player-action saga must include `.WhenIn(PlayerTurn).Validate(PlayerExists).Validate(IsActivePlayer)` — in that order. Tests must cover the wrong-state and wrong-player rejection cases.
 
 ### Adding a new event
 
@@ -74,7 +87,7 @@ new CommandSaga<MoveCommand>()
 - **`GameEngine/Saga/SagaContext.cs`** — per-execution data bag threaded through all steps
 - **`GameEngine/GameStateMachine.cs`** — static registry of `Type → ICommandSaga`; dispatches `Handle(ICommand)` to the right saga
 - **`GameEngine/GameInstance.cs`** — per-game actor; owns the command channel, `ProcessLoop`, and `BroadcastAsync` (serializes each event as JSON and pushes to the SignalR group)
-- **`GameEngine/GameState.cs`** — mutable state: player list, board, `GameStateType` (Initial → WaitingInLobby → Playing → Final)
+- **`GameEngine/GameState.cs`** — mutable state: player list, board, `GameStateType` (Initial → PlayerTurn ⇄ VillainTurn → Final)
 - **`Managers/GameInstanceManager.cs`** — DI singleton; factory and registry for `GameInstance` objects
 - **`Endpoints/GameEndpoints.cs`** — minimal API endpoint definitions; one `Map(IEndpointRouteBuilder)` per domain area
 - **`Hubs/EventHub.cs`** — SignalR hub; clients call `JoinGame`/`LeaveGame` to subscribe to a game group

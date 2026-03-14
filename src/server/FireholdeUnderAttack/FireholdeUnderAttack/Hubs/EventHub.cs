@@ -1,11 +1,17 @@
+using FireholdeUnderAttack.Managers;
 using Microsoft.AspNetCore.SignalR;
 
 namespace FireholdeUnderAttack.Hubs;
 
-public class EventHub : Hub
+public class EventHub(GameInstanceManager manager) : Hub
 {
-    public async Task JoinGame(Guid gameId)
+    public async Task JoinGame(Guid gameId, Guid playerId)
     {
+        var game = manager.Get(gameId.ToString());
+
+        if (game.State.Players.All(p => p.Id != playerId))
+            throw new HubException($"Player {playerId} is not in game {gameId}.");
+
         await Groups.AddToGroupAsync(Context.ConnectionId, gameId.ToString());
     }
 
