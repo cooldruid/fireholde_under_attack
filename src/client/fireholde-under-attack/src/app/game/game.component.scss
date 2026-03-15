@@ -1,0 +1,20 @@
+.board {
+  display: grid;
+  width: 1100px;
+}
+
+.tile {
+  height: 110px;
+}
+
+.player-token {
+  position: fixed;
+  height: 80px;
+  transition: transform 200ms linear;
+}
+
+.move-button {
+  position: absolute;
+  bottom: 50px;
+  right: 50px;
+}

@@ -1,0 +1,11 @@
+<div class="dice-face" [class.rolling]="rolling()">
+  @for (slot of slots; track slot) {
+    <div class="pip-slot">
+      @if (activePips().has(slot)) {
+        <div class="pip"></div>
+      }
+    </div>
+  }
+</div>
+
+<button (click)="roll(5)" [disabled]="rolling()">Roll</button>

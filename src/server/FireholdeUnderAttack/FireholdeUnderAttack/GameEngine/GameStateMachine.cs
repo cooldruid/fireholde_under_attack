@@ -12,6 +12,9 @@ public class GameStateMachine(GameState gameState)
     private static readonly Dictionary<Type, ICommandSaga> Sagas = new()
     {
         [typeof(MoveCommand)] = MoveCommandSaga.Saga,
+        [typeof(StartGameCommand)] = StartGameCommandSaga.Saga,
+        [typeof(JoinGameCommand)] = JoinGameCommandSaga.Saga,
+        [typeof(VillainTurnCommand)] = VillainTurnCommandSaga.Saga,
     };
 
     public List<IEvent> Handle(ICommand command)

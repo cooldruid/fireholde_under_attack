@@ -14,9 +14,9 @@ public sealed class CommandSaga<TCommand> : ICommandSaga where TCommand : IComma
     {
         _steps.Add(new GuardStep(
             (_, state, _) => states.Contains(state.State),
-            (cmd, _, _) => new CommandRejectedEvent
+            (cmd, state, _) => new CommandRejectedEvent
             {
-                GameId = cmd.GameId,
+                GameId = state.GameId,
                 Reason = $"{typeof(TCommand).Name} not valid in state '{string.Join(", ", states.Select(s => s.ToString()))}'"
             }
         ));
@@ -29,7 +29,7 @@ public sealed class CommandSaga<TCommand> : ICommandSaga where TCommand : IComma
     {
         _steps.Add(new GuardStep(
             predicate,
-            (cmd, _, _) => new CommandRejectedEvent { GameId = cmd.GameId, Reason = $"{typeof(TCommand).Name} rejected: {reason}" }
+            (cmd, state, _) => new CommandRejectedEvent { GameId = state.GameId, Reason = $"{typeof(TCommand).Name} rejected: {reason}" }
         ));
         return this;
     }
@@ -40,7 +40,7 @@ public sealed class CommandSaga<TCommand> : ICommandSaga where TCommand : IComma
     {
         _steps.Add(new GuardStep(
             (cmd, state, _) => predicate(cmd, state),
-            (cmd, _, _) => new CommandRejectedEvent { GameId = cmd.GameId, Reason = $"{typeof(TCommand).Name} rejected: {reason}" }
+            (cmd, state, _) => new CommandRejectedEvent { GameId = state.GameId, Reason = $"{typeof(TCommand).Name} rejected: {reason}" }
         ));
         return this;
     }
