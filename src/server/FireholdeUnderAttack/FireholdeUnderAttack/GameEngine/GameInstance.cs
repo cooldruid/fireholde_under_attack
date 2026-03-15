@@ -17,10 +17,11 @@ public class GameInstance
     public Guid Id { get; }
     public GameState State => _state;
 
-    public GameInstance(Guid gameOwnerId, IHubContext<EventHub> hubContext)
+    public GameInstance(Guid gameOwnerId, string ownerName, IHubContext<EventHub> hubContext)
     {
         Id = Guid.NewGuid();
-        _state = GameState.Create(gameOwnerId);
+        _state = GameState.Create(gameOwnerId, ownerName);
+        _state.GameId = Id;
         _hubContext = hubContext;
 
         _channel = Channel.CreateUnbounded<ICommand>();
@@ -41,7 +42,7 @@ public class GameInstance
                 await BroadcastAsync(events);
 
                 if (_state.State == GameStateType.VillainTurn)
-                    await Enqueue(new VillainTurnCommand { GameId = Id });
+                    await Enqueue(new VillainTurnCommand());
             }
             catch (Exception ex)
             {
@@ -54,6 +55,7 @@ public class GameInstance
     {
         foreach (var @event in events)
         {
+            @event.SequenceNumber = ++_state.SequenceNumber;
             var method = @event.GetType().Name;
             var payload = JsonSerializer.Serialize(@event, @event.GetType());
             await _hubContext.Clients.Group(Id.ToString()).SendAsync(method, payload);

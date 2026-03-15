@@ -11,7 +11,8 @@ public class MoveCommandTests
 
     private static GameState BuildState(GameStateType stateType, Guid? playerId = null)
     {
-        var state = GameState.Create(playerId ?? PlayerId);
+        var state = GameState.Create(playerId ?? PlayerId, "TestPlayer");
+        state.GameId = GameId;
         state.State = stateType;
         if (stateType == GameStateType.PlayerTurn)
         {
@@ -23,7 +24,6 @@ public class MoveCommandTests
 
     private static MoveCommand BuildCommand(Guid? playerId = null) => new()
     {
-        GameId = GameId,
         PlayerId = playerId ?? PlayerId
     };
 
@@ -35,8 +35,8 @@ public class MoveCommandTests
         // Arrange
         var secondPlayerId = Guid.NewGuid();
         var state = BuildState(GameStateType.PlayerTurn);
-        state.Players.Add(new PlayerState { Id = secondPlayerId, CurrentTile = 1, Health = 50 });
-        var initialTile = state.Players.First(p => p.Id == PlayerId).CurrentTile;
+        state.Players.Add(new PlayerState { PlayerId = secondPlayerId, CurrentTile = 1, Health = 50 });
+        var initialTile = state.Players.First(p => p.PlayerId == PlayerId).CurrentTile;
 
         // Act
         var events = new GameStateMachine(state).Handle(BuildCommand());
@@ -48,7 +48,7 @@ public class MoveCommandTests
         Assert.Equal(PlayerId, move.PlayerId);
         Assert.InRange(move.DiceRoll, 1, 6);
         Assert.True(move.NewTileId > initialTile);
-        Assert.Equal(move.NewTileId, state.Players.First(p => p.Id == PlayerId).CurrentTile);
+        Assert.Equal(move.NewTileId, state.Players.First(p => p.PlayerId == PlayerId).CurrentTile);
 
         var turnChanged = Assert.IsType<TurnChangedEvent>(events[1]);
         Assert.False(turnChanged.IsVillainTurn);
@@ -120,7 +120,7 @@ public class MoveCommandTests
         // Arrange
         var secondPlayerId = Guid.NewGuid();
         var state = BuildState(GameStateType.PlayerTurn);
-        state.Players.Add(new PlayerState { Id = secondPlayerId, CurrentTile = 1, Health = 50 });
+        state.Players.Add(new PlayerState { PlayerId = secondPlayerId, CurrentTile = 1, Health = 50 });
         var command = BuildCommand(playerId: secondPlayerId); // valid player, but not active
 
         // Act

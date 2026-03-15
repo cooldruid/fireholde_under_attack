@@ -5,14 +5,26 @@
       <thead>
         <tr>
           <th>#</th>
-          <th>Player ID</th>
+          <th>Name</th>
+          <th>Color</th>
         </tr>
       </thead>
       <tbody>
-        @for (player of players(); track player.id; let i = $index) {
+        @for (player of players(); track player.playerId; let i = $index) {
           <tr>
             <td>{{ i + 1 }}</td>
-            <td class="player-id">{{ player.id }}</td>
+            <td class="player-name-cell">
+            @if (player.playerId === ownerId()) {
+              <svg class="crown" viewBox="0 0 20 14" xmlns="http://www.w3.org/2000/svg" aria-label="Owner">
+                <polygon points="0,14 0,8 4,2 10,7 16,2 20,8 20,14" />
+                <rect x="0" y="12" width="20" height="2" />
+              </svg>
+            }
+            {{ player.playerName }}
+          </td>
+          <td>
+            <span class="color-swatch" [style.background]="playerColors[i]"></span>
+          </td>
           </tr>
         }
       </tbody>
@@ -23,6 +35,6 @@
       <span class="invite-code">{{ gameId }}</span>
     </div>
 
-    <button class="start-btn">Start Game</button>
+    <button class="start-btn" [disabled]="!isOwner()" (click)="startGame()">Start Game</button>
   </div>
 </div>

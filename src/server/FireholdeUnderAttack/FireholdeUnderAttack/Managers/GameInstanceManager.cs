@@ -9,9 +9,9 @@ public class GameInstanceManager(IHubContext<EventHub> hubContext)
 {
     private readonly Dictionary<string, GameInstance> _gameInstances = [];
 
-    public GameInstance Create(Guid gameOwnerId)
+    public GameInstance Create(Guid gameOwnerId, string ownerName)
     {
-        var instance = new GameInstance(gameOwnerId, hubContext);
+        var instance = new GameInstance(gameOwnerId, ownerName, hubContext);
         _gameInstances.Add(instance.Id.ToString(), instance);
         Log.Information("Created game instance {GameInstanceId}", instance.Id);
         return instance;

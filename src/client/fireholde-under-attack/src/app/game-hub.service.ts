@@ -8,6 +8,10 @@ import { environment } from '../environments/environment';
 export class GameHubService implements OnDestroy {
   private connection: signalR.HubConnection | null = null;
   private readonly subjects = new Map<string, Subject<unknown>>();
+  private readonly reconnectedSubject = new Subject<void>();
+
+  /** Emits whenever the SignalR connection is re-established after a drop. */
+  readonly reconnected$ = this.reconnectedSubject.asObservable();
 
   /** Returns an Observable for a named hub event. Safe to call before connect(). */
   on<T>(event: string): Observable<T> {
@@ -31,6 +35,8 @@ export class GameHubService implements OnDestroy {
     this.subjects.forEach((subject, event) => {
       this.connection!.on(event, (data: unknown) => subject.next(data));
     });
+
+    this.connection.onreconnected(() => this.reconnectedSubject.next());
 
     await this.connection.start();
     await this.connection.invoke('JoinGame', gameId, playerId);

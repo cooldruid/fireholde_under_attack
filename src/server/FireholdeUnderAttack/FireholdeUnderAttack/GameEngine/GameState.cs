@@ -4,6 +4,9 @@ namespace FireholdeUnderAttack.GameEngine;
 
 public class GameState
 {
+    public Guid GameId { get; set; }
+    public Guid OwnerId { get; set; }
+    public int SequenceNumber { get; set; }
     public List<PlayerState> Players { get; set; } = [];
     public GameStateType State { get; set; }
     public required BoardState Board { get; set; }
@@ -14,15 +17,17 @@ public class GameState
     private GameState()
     { }
 
-    public static GameState Create(Guid gameOwnerId)
+    public static GameState Create(Guid gameOwnerId, string ownerName)
     {
         return new GameState()
         {
+            OwnerId = gameOwnerId,
             Players =
             [
                 new()
                 {
-                    Id = gameOwnerId,
+                    PlayerId = gameOwnerId,
+                    PlayerName = ownerName,
                     CurrentTile = 1,
                     Health = 50
                 }
@@ -46,7 +51,8 @@ public enum GameStateType
 
 public class PlayerState
 {
-    public Guid Id { get; set; }
+    public Guid PlayerId { get; set; }
+    public string PlayerName { get; set; } = "";
     public int CurrentTile { get; set; }
     public int Health { get; set; }
 }

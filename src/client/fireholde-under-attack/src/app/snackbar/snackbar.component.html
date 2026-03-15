@@ -1,0 +1,5 @@
+<div class="snackbar-container">
+  @for (msg of snackbar.messages(); track msg.id) {
+    <div class="snackbar">{{ msg.text }}</div>
+  }
+</div>

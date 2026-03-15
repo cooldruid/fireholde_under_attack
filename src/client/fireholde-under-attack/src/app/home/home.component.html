@@ -1,6 +1,20 @@
 <div class="menu">
   <h1 class="title">Fireholde<br />Under Attack!</h1>
 
+  <div class="name-section">
+    <label class="name-label" for="player-name">Your Name</label>
+    <div class="name-row">
+      <input
+        id="player-name"
+        type="text"
+        placeholder="Enter your name..."
+        [ngModel]="identity.playerName()"
+        (ngModelChange)="identity.setName($event)"
+      />
+      <button class="btn-reroll" (click)="rollName()" title="Generate a random name">&#9860;</button>
+    </div>
+  </div>
+
   <div class="actions">
     <button (click)="hostGame()">Host Game</button>
     <button (click)="openJoinDialog()">Join Game</button>

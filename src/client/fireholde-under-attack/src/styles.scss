@@ -29,4 +29,35 @@ button {
     transform: translate(4px, 4px);
     box-shadow: none;
   }
+
+  &:disabled {
+    background-color: #4a2e10;
+    color: #7a5030;
+    border-color: #3a1e08;
+    box-shadow: 4px 4px 0 #3a1e08;
+    cursor: not-allowed;
+
+    &:active {
+      transform: none;
+      box-shadow: 4px 4px 0 #3a1e08;
+    }
+  }
+}
+
+input[type="text"] {
+  background: #1a0d0060;
+  border: 2px solid #5c2e08;
+  color: #f5d080;
+  font-family: monospace;
+  font-size: 14px;
+  padding: 8px 12px;
+  outline: none;
+
+  &::placeholder {
+    color: #c8841a80;
+  }
+
+  &:focus {
+    border-color: #c8841a;
+  }
 }

@@ -1,17 +1,20 @@
 import { AfterViewInit, Component, ElementRef, OnDestroy, QueryList, ViewChildren, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 
 import { BOARD } from './data/board';
 import { Player } from './data/player';
 import { TilePosition } from './data/tile-position';
+import { DiceComponent } from './dice/dice.component';
 import { GridPositionPipe } from './grid-position.pipe';
 import { GameHubService } from '../game-hub.service';
+import { GameStateService } from '../game-state.service';
 import { PlayerIdentityService } from '../player-identity.service';
 
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [GridPositionPipe],
+  imports: [GridPositionPipe, DiceComponent],
   templateUrl: './game.component.html',
   styleUrl: './game.component.scss',
 })
@@ -22,16 +25,25 @@ export class GameComponent implements AfterViewInit, OnDestroy {
 
   private tileCoordinates: TilePosition[] = [];
   readonly tokenTransform = signal('');
-  readonly player = signal<Player>({ currentTile: 1 });
+  readonly player = signal<Player>({ name: '', currentTile: 1 });
 
   private readonly hub = inject(GameHubService);
+  readonly gameState = inject(GameStateService);
+
+  private reconnectSub?: Subscription;
 
   constructor() {
     const nav = inject(Router).getCurrentNavigation();
     const identity = inject(PlayerIdentityService);
-    const gameId: string = nav?.extras.state?.['gameId'] ?? '';
+    const gameId: string =
+      nav?.extras.state?.['gameId'] ?? localStorage.getItem('current_game_id') ?? '';
 
+    this.gameState.init(gameId);
     this.hub.connect(gameId, identity.playerId);
+
+    this.reconnectSub = this.hub.reconnected$.subscribe(() =>
+      this.gameState.refreshState()
+    );
   }
 
   ngAfterViewInit(): void {
@@ -40,6 +52,7 @@ export class GameComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.reconnectSub?.unsubscribe();
     this.hub.disconnect();
   }
 

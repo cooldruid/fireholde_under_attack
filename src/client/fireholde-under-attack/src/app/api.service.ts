@@ -5,13 +5,16 @@ import { Observable } from 'rxjs';
 import { environment } from '../environments/environment';
 
 export interface LobbyPlayer {
-  id: string;
+  playerId: string;
+  playerName: string;
 }
 
 export interface GameState {
   players: LobbyPlayer[];
+  ownerId: string;
   state: number;
   board: { tiles: unknown[] };
+  sequenceNumber: number;
 }
 
 export interface CreateGameResponse {

@@ -19,16 +19,16 @@ internal static class StartGameCommandSaga
     private static void InitialiseTurn(StartGameCommand _, GameState state)
     {
         state.ActivePlayerIndex = 0;
-        state.ActivePlayerId = state.Players[0].Id;
+        state.ActivePlayerId = state.Players[0].PlayerId;
         state.Round = 1;
         state.State = PlayerTurn;
     }
 
-    private static IEvent GameStarted(StartGameCommand cmd, GameState state) =>
+    private static IEvent GameStarted(StartGameCommand _, GameState state) =>
         new GameStartedEvent
         {
-            GameId = cmd.GameId,
-            ActivePlayerId = state.Players[0].Id,
+            GameId = state.GameId,
+            ActivePlayerId = state.Players[0].PlayerId,
             Round = state.Round
         };
 }

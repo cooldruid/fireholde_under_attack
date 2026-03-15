@@ -12,15 +12,16 @@ public class JoinGameCommandTests
 
     private static GameState BuildState(GameStateType stateType)
     {
-        var state = GameState.Create(OwnerId);
+        var state = GameState.Create(OwnerId, "Owner");
+        state.GameId = GameId;
         state.State = stateType;
         return state;
     }
 
     private static JoinGameCommand BuildCommand(Guid? playerId = null) => new()
     {
-        GameId = GameId,
-        PlayerId = playerId ?? JoiningPlayerId
+        PlayerId = playerId ?? JoiningPlayerId,
+        PlayerName = "Joining Player"
     };
 
     // ── Broad flow tests ──────────────────────────────────────────────────────
@@ -37,11 +38,12 @@ public class JoinGameCommandTests
         // Assert
         var joined = Assert.IsType<PlayerJoinedEvent>(Assert.Single(events));
         Assert.Equal(JoiningPlayerId, joined.PlayerId);
+        Assert.Equal("Joining Player", joined.PlayerName);
         Assert.Equal(GameId, joined.GameId);
 
         Assert.Equal(GameStateType.Initial, state.State);
         Assert.Equal(2, state.Players.Count);
-        Assert.Contains(state.Players, p => p.Id == JoiningPlayerId);
+        Assert.Contains(state.Players, p => p.PlayerId == JoiningPlayerId && p.PlayerName == "Joining Player");
     }
 
     // ── Rejection scenarios ───────────────────────────────────────────────────
@@ -83,9 +85,9 @@ public class JoinGameCommandTests
     {
         // Arrange
         var state = BuildState(GameStateType.Initial);
-        state.Players.Add(new PlayerState { Id = Guid.NewGuid(), CurrentTile = 1, Health = 50 });
-        state.Players.Add(new PlayerState { Id = Guid.NewGuid(), CurrentTile = 1, Health = 50 });
-        state.Players.Add(new PlayerState { Id = Guid.NewGuid(), CurrentTile = 1, Health = 50 });
+        state.Players.Add(new PlayerState { PlayerId = Guid.NewGuid(), CurrentTile = 1, Health = 50 });
+        state.Players.Add(new PlayerState { PlayerId = Guid.NewGuid(), CurrentTile = 1, Health = 50 });
+        state.Players.Add(new PlayerState { PlayerId = Guid.NewGuid(), CurrentTile = 1, Health = 50 });
         // 4 players total now (owner + 3 added)
 
         // Act

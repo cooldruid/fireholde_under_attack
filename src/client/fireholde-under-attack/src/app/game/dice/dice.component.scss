@@ -1,0 +1,38 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.dice-face {
+  width: 88px;
+  height: 88px;
+  background: #2a0f01;
+  border: 3px solid #c8841a;
+  box-shadow: 4px 4px 0 #5c2e08;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 10px;
+  box-sizing: border-box;
+  gap: 2px;
+  transition: border-color 80ms step-end;
+
+  &.rolling {
+    border-color: #f5d080;
+  }
+}
+
+.pip-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pip {
+  width: 12px;
+  height: 12px;
+  background: #f5d080;
+  box-shadow: 1px 1px 0 #5c2e08;
+}

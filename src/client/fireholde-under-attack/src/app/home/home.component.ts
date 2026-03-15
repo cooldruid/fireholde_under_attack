@@ -2,8 +2,9 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
-import { ApiService, CreateGameResponse, JoinGameResponse } from '../api.service';
+import { ApiService, CreateGameResponse } from '../api.service';
 import { PlayerIdentityService } from '../player-identity.service';
+import { generatePlayerName } from '../player-names';
 
 @Component({
   selector: 'app-home',
@@ -14,19 +15,24 @@ import { PlayerIdentityService } from '../player-identity.service';
 })
 export class HomeComponent {
   private readonly api = inject(ApiService);
-  private readonly identity = inject(PlayerIdentityService);
+  readonly identity = inject(PlayerIdentityService);
   private readonly router = inject(Router);
 
   readonly joinDialogOpen = signal(false);
   inviteCode = '';
 
+  rollName(): void {
+    this.identity.setName(generatePlayerName());
+  }
+
   hostGame(): void {
     this.api
-      .post<CreateGameResponse>('/games/create', { playerId: this.identity.playerId })
+      .post<CreateGameResponse>('/games/create', {
+        playerId: this.identity.playerId,
+        playerName: this.identity.playerName(),
+      })
       .subscribe(response => {
-        this.router.navigate(['/lobby'], {
-          state: { gameId: response.gameId, players: [{ id: response.playerId }] },
-        });
+        this.router.navigate(['/lobby'], { state: { gameId: response.gameId } });
       });
   }
 
@@ -41,24 +47,14 @@ export class HomeComponent {
 
   joinGame(): void {
     this.api
-      .post<JoinGameResponse>('/games/join', {
+      .post<{ gameId: string }>('/games/join', {
         gameId: this.inviteCode,
         playerId: this.identity.playerId,
+        playerName: this.identity.playerName(),
       })
       .subscribe(response => {
         this.joinDialogOpen.set(false);
-        const playerIds = response.playerIds.map(id => ({id}));
-
-        if(!playerIds.find(x => x.id == this.identity.playerId)) {
-          playerIds.push({id: this.identity.playerId});
-        }
-
-        this.router.navigate(['/lobby'], {
-          state: {
-            gameId: response.gameId,
-            players: playerIds,
-          },
-        });
+        this.router.navigate(['/lobby'], { state: { gameId: response.gameId } });
       });
   }
 }

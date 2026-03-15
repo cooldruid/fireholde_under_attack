@@ -23,7 +23,7 @@ internal static class TurnHelper
         else
         {
             state.ActivePlayerIndex = nextIndex;
-            state.ActivePlayerId = state.Players[nextIndex].Id;
+            state.ActivePlayerId = state.Players[nextIndex].PlayerId;
             ctx.Set("isVillainTurn", false);
         }
     }
@@ -31,7 +31,7 @@ internal static class TurnHelper
     public static void AdvanceVillainTurn(GameState state)
     {
         state.ActivePlayerIndex = 0;
-        state.ActivePlayerId = state.Players[0].Id;
+        state.ActivePlayerId = state.Players[0].PlayerId;
         state.State = PlayerTurn;
     }
 }

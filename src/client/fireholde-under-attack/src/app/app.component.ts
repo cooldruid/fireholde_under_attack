@@ -1,13 +1,25 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+
+import { GameHubService } from './game-hub.service';
+import { SnackbarService } from './snackbar.service';
+import { SnackbarComponent } from './snackbar/snackbar.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, SnackbarComponent],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+  styleUrl: './app.component.scss',
 })
 export class AppComponent {
-  title = 'fireholde-under-attack';
+  constructor() {
+    const hub = inject(GameHubService);
+    const snackbar = inject(SnackbarService);
+
+    hub.on<string>('CommandRejectedEvent').subscribe(raw => {
+      const event = JSON.parse(raw);
+      snackbar.show(event.Reason);
+    });
+  }
 }

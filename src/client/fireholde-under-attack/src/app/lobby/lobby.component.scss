@@ -43,10 +43,28 @@
     padding: 8px 10px;
     border-bottom: 1px solid #5c2e0840;
   }
+}
 
-  .player-id {
-    font-size: 11px;
-  }
+.player-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #5c2e08;
+  vertical-align: middle;
+}
+
+.crown {
+  width: 14px;
+  height: 10px;
+  fill: #f5d080;
+  flex-shrink: 0;
 }
 
 .invite {

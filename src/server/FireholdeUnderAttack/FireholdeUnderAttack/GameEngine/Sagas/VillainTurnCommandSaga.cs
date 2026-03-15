@@ -21,7 +21,7 @@ internal static class VillainTurnCommandSaga
     private static IEvent TurnChanged(VillainTurnCommand cmd, GameState state) =>
         new TurnChangedEvent
         {
-            GameId = cmd.GameId,
+            GameId = state.GameId,
             ActivePlayerId = state.ActivePlayerId,
             IsVillainTurn = false,
             Round = state.Round
