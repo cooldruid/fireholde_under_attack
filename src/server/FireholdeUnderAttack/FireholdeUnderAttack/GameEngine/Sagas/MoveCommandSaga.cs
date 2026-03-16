@@ -27,7 +27,7 @@ internal static class MoveCommandSaga
         var player = state.Players.First(p => p.PlayerId == cmd.PlayerId);
         var dice = new Random().Next(1, 7);
         ctx.Set("dice", dice);
-        player.CurrentTile += dice;
+        player.CurrentTile = (player.CurrentTile + dice) % state.Board.Tiles.Count;
     }
 
     private static IEvent PlayerMoved(MoveCommand cmd, GameState state, SagaContext ctx) =>

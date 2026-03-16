@@ -2,9 +2,10 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 
-import { ApiService, CreateGameResponse } from '../api.service';
-import { PlayerIdentityService } from '../player-identity.service';
-import { generatePlayerName } from '../player-names';
+import { ApiService } from '../core/api/api.service';
+import { CreateGameResponse } from '../core/api/api.models';
+import { PlayerIdentityService } from '../core/player/player-identity.service';
+import { generatePlayerName } from '../core/player/player-names';
 
 @Component({
   selector: 'app-home',

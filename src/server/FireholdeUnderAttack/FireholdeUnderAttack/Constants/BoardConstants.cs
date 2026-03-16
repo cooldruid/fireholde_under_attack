@@ -6,6 +6,7 @@ public static class BoardConstants
 {
     public static List<TileState> Board =
     [
+        new() { Id = 0, Type = "" },
         new() { Id = 1, Type = "" },
         new() { Id = 2, Type = "" },
         new() { Id = 3, Type = "" },
@@ -40,7 +41,6 @@ public static class BoardConstants
         new() { Id = 32, Type = "" },
         new() { Id = 33, Type = "" },
         new() { Id = 34, Type = "" },
-        new() { Id = 35, Type = "" },
-        new() { Id = 36, Type = "" }
+        new() { Id = 35, Type = "" }
     ];
 }

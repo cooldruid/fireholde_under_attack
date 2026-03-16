@@ -27,8 +27,9 @@ public class GameState
                 new()
                 {
                     PlayerId = gameOwnerId,
+                    PlayerIndex = 0,
                     PlayerName = ownerName,
-                    CurrentTile = 1,
+                    CurrentTile = 0,
                     Health = 50
                 }
             ],
@@ -52,6 +53,7 @@ public enum GameStateType
 public class PlayerState
 {
     public Guid PlayerId { get; set; }
+    public int PlayerIndex { get; set; }
     public string PlayerName { get; set; } = "";
     public int CurrentTile { get; set; }
     public int Health { get; set; }

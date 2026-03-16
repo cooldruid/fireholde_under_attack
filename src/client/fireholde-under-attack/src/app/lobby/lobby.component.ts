@@ -2,11 +2,11 @@ import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
-import { ApiService, GameState, LobbyPlayer } from '../api.service';
-import { GameHubService } from '../game-hub.service';
-import { PlayerIdentityService } from '../player-identity.service';
-
-const PLAYER_COLORS = ['#6699cc', '#66aa66', '#cc5555', '#f5d080'];
+import { ApiService } from '../core/api/api.service';
+import { GameState, LobbyPlayer } from '../core/api/api.models';
+import { GameHubService } from '../core/hub/game-hub.service';
+import { PLAYER_COLORS } from '../core/player/player-colors';
+import { PlayerIdentityService } from '../core/player/player-identity.service';
 
 @Component({
   selector: 'app-lobby',
@@ -44,7 +44,7 @@ export class LobbyComponent implements OnDestroy {
       this.players.update(current =>
         current.some(p => p.playerId === obj.PlayerId)
           ? current
-          : [...current, { playerId: obj.PlayerId, playerName: obj.PlayerName ?? '' }]
+          : [...current, { playerId: obj.PlayerId, playerName: obj.PlayerName ?? '', currentTile: 1 }]
       );
     });
 

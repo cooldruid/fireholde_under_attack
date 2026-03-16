@@ -1,9 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-export interface SnackMessage {
-  id: number;
-  text: string;
-}
+import { SnackMessage } from './snackbar.models';
 
 @Injectable({ providedIn: 'root' })
 export class SnackbarService {

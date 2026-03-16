@@ -1,8 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
-import { GameHubService } from './game-hub.service';
-import { SnackbarService } from './snackbar.service';
+import { GameHubService } from './core/hub/game-hub.service';
+import { SnackbarService } from './snackbar/snackbar.service';
 import { SnackbarComponent } from './snackbar/snackbar.component';
 
 @Component({

@@ -1,12 +1,9 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { ApiService, GameState } from './api.service';
-
-export interface SequencedEvent {
-  sequenceNumber: number;
-  [key: string]: unknown;
-}
+import { ApiService } from '../api/api.service';
+import { GameState } from '../api/api.models';
+import { SequencedEvent } from './game-state.models';
 
 @Injectable({ providedIn: 'root' })
 export class GameStateService {
@@ -35,6 +32,16 @@ export class GameStateService {
    * Otherwise increments the counter, calls apply(), and returns true.
    * CommandRejectedEvent: pass a no-op apply() — the counter still advances.
    */
+  updateActivePlayer(playerId: string): void {
+    this.state.update(s => s ? { ...s, activePlayerId: playerId } : s);
+  }
+
+  updatePlayerTile(playerId: string, tileId: number): void {
+    this.state.update(s =>
+      s ? { ...s, players: s.players.map(p => p.playerId === playerId ? { ...p, currentTile: tileId } : p) } : s
+    );
+  }
+
   async onEvent(event: SequencedEvent, apply: () => void): Promise<boolean> {
     if (event.sequenceNumber !== this.lastSequenceNumber + 1) {
       await this.refreshState();

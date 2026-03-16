@@ -24,25 +24,28 @@ export class DiceComponent {
   private readonly currentFace = signal(1);
   protected readonly activePips = computed(() => FACE_PIPS[this.currentFace()]);
 
-  roll(result: number): void {
-    if (this.rolling()) return;
-    this.rolling.set(true);
+  roll(result: number): Promise<void> {
+    return new Promise(resolve => {
+      if (this.rolling()) { resolve(); return; }
+      this.rolling.set(true);
 
-    const steps = 14;
-    let step = 0;
+      const steps = 14;
+      let step = 0;
 
-    const schedule = (): void => {
-      if (step >= steps - 1) {
-        this.currentFace.set(result);
-        this.rolling.set(false);
-        return;
-      }
-      this.currentFace.set(Math.floor(Math.random() * 6) + 1);
-      step++;
-      // ease out: 40ms at start → ~320ms at end
-      setTimeout(schedule, 40 + (step / steps) * 280);
-    };
+      const schedule = (): void => {
+        if (step >= steps - 1) {
+          this.currentFace.set(result);
+          this.rolling.set(false);
+          resolve();
+          return;
+        }
+        this.currentFace.set(Math.floor(Math.random() * 6) + 1);
+        step++;
+        // ease out: 40ms at start → ~320ms at end
+        setTimeout(schedule, 40 + (step / steps) * 280);
+      };
 
-    schedule();
+      schedule();
+    });
   }
 }

@@ -24,7 +24,8 @@ internal static class JoinGameCommandSaga
 
     private static void AddPlayer(JoinGameCommand cmd, GameState state)
     {
-        state.Players.Add(new PlayerState { PlayerId = cmd.PlayerId, PlayerName = cmd.PlayerName, CurrentTile = 1, Health = 50 });
+        var index = state.Players.Max(p => p.PlayerIndex) + 1;
+        state.Players.Add(new PlayerState { PlayerId = cmd.PlayerId, PlayerIndex = index, PlayerName = cmd.PlayerName, CurrentTile = 0, Health = 50 });
     }
 
     private static IEvent PlayerJoined(JoinGameCommand cmd, GameState state) =>

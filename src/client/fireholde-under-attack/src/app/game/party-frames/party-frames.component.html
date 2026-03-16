@@ -1,0 +1,15 @@
+<div class="frames">
+  @for (player of gameState.state()?.players ?? []; track player.playerId; let i = $index) {
+    <div class="frame" [class.is-me]="player.playerId === gameState.state()?.activePlayerId">
+      <div class="arrow"></div>
+      <span class="dot" [style.background]="colors[i]"></span>
+      <div class="info">
+        <span class="name">{{ player.playerName }}</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width: 100%"></div>
+          <span class="bar-label">{{ maxHealth }} / {{ maxHealth }}</span>
+        </div>
+      </div>
+    </div>
+  }
+</div>

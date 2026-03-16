@@ -1,20 +1,28 @@
+<app-party-frames />
+
 <div class="board">
   @for (tile of board; track tile.id) {
     <img
       class="tile"
       [style]="tile.id | gridPosition"
       src="assets/tiles/square.png"
-      #tile
     />
   }
-  <img
-    class="player-token"
-    src="assets/wizard.png"
-    [style.transform]="tokenTransform()"
-  />
+  @for (token of tokenPositions(); track token.playerId) {
+    <div class="token-wrapper" [style.top.px]="token.top" [style.left.px]="token.left">
+      <img class="player-token" [src]="token.asset" />
+      <span class="token-label">{{ token.name }}</span>
+    </div>
+  }
 </div>
 
-<app-dice />
+@if (showDice()) {
+  <div class="dice-overlay">
+    <app-dice />
+  </div>
+}
 
-<button class="move-button" (click)="movePlayer(5)">Move 5</button>
-<button (click)="gameState.refreshState()">Refresh</button>
+<div class="actions">
+  <button (click)="movePlayer(5)">Roll 5</button>
+  <button [disabled]="!isMyTurn()" (click)="move()">Move</button>
+</div>
