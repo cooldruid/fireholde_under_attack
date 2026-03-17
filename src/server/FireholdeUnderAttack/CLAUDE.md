@@ -111,8 +111,57 @@ Returns `202 Accepted`. Results arrive asynchronously via SignalR — the method
 - **Actions that change game state at lobby level** (join game, start game): go through the state machine — they are game rules
 - **Chat and other orthogonal concerns**: do not go through the state machine
 
+### Card system (planned)
+
+Players have an inventory of cards. Cards are defined as pure data in `Constants/CardCatalog.cs` and applied by a `Cards/CardEffectApplicator.cs`. There is no card logic in sagas — sagas call the applicator.
+
+**Card definition shape:**
+
+```csharp
+record CardDefinition(string Id, string Name, int Cost, CardUsage Usage, CardEffect Effect, PassiveTrigger? Trigger);
+
+// Effects and triggers are sealed record hierarchies — pure data, no logic
+abstract record CardEffect;
+record HealEffect(int Amount) : CardEffect;
+// ...
+
+abstract record PassiveTrigger;
+record OnMoveTrigger : PassiveTrigger;
+// ...
+```
+
+**Active cards** are played via `UseCardCommand` during a player's turn. Using a card does not consume the turn — the player still needs to move.
+
+**Passive cards** are applied by sagas at the right moment (e.g. `MoveCommandSaga` calls `CardEffectApplicator.ApplyPassivesOnMove`). The trigger type on the definition controls when they fire.
+
+#### Pending choices
+
+When a player lands on a shop or fulfills a quest, the game needs to pause and wait for a selection before ending the turn. This is modelled as a nullable `PendingChoice` on `GameState` (no new `GameStateType` values needed):
+
+```csharp
+public record PendingChoice(PendingChoiceType Type, List<string> CardIds, IReadOnlySet<Type> AllowedCommands);
+```
+
+`AllowedCommands` is the set of command types that are permitted to resolve this choice (e.g. `BuyCardCommand`, `SkipChoiceCommand`). **The guard is enforced centrally in `GameStateMachine.Handle()`** — if a pending choice is active and the incoming command type is not in `AllowedCommands`, the state machine returns a `CommandRejectedEvent` immediately, before dispatching to any saga. No individual saga needs a `NoPendingChoice` validation step.
+
+Sagas that create a pending choice (e.g. `MoveCommandSaga` on landing on a shop) set `state.PendingChoice` in an Execute step and conditionally skip turn advancement. Sagas that resolve a pending choice clear `state.PendingChoice` and then advance the turn.
+
+**New commands:**
+
+- `BuyCardCommand` — buy from shop; deducts gold, adds card to inventory, clears pending choice, advances turn
+- `SelectRewardCommand` — pick a free quest reward card; same flow minus gold
+- `SkipChoiceCommand` — decline a shop/reward; clears pending choice, advances turn
+- `UseCardCommand` — use an active card during a player's turn (does not advance turn)
+
+**New events:**
+
+- `ChoicesAvailableEvent` — carries `PendingChoiceType` and list of `CardDefinition` for the client to display
+- `CardAcquiredEvent` — card added to a player's inventory
+- `CardUsedEvent` — active card was played
+
 ### Notable gaps (work in progress)
 
 - Tile types in `BoardConstants` are empty strings
 - `GameStateType` transitions (e.g. Initial → WaitingInLobby) are not enforced yet — no commands exist for lobby management
 - No strongly-typed SignalR hub client interface yet (`Hub<T>`) — planned for when non-event push messages are needed
+- Card system not yet implemented — see Card system section above

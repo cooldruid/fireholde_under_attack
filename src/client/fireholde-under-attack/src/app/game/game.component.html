@@ -1,11 +1,11 @@
 <app-party-frames />
 
 <div class="board">
-  @for (tile of board; track tile.id) {
+  @for (tile of board(); track tile.id) {
     <img
       class="tile"
       [style]="tile.id | gridPosition"
-      src="assets/tiles/square.png"
+      [src]="'assets/tiles/' + tile.type.toLowerCase() + '.png'"
     />
   }
   @for (token of tokenPositions(); track token.playerId) {
@@ -15,6 +15,10 @@
     </div>
   }
 </div>
+
+@if (overlayTitle()) {
+  <app-overlay [title]="overlayTitle()!" />
+}
 
 @if (showDice()) {
   <div class="dice-overlay">

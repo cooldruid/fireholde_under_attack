@@ -2,12 +2,12 @@ import { Component, OnDestroy, ViewChild, computed, inject, signal } from '@angu
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
-import { BOARD } from './data/board';
 import { SLOT_OFFSETS, tilePixelPosition } from './data/tile-math';
 import { WIZARD_ASSETS } from '../core/player/player-colors';
 import { DiceComponent } from './dice/dice.component';
 import { PartyFramesComponent } from './party-frames/party-frames.component';
 import { GridPositionPipe } from './grid-position.pipe';
+import { OverlayComponent } from '../shared/overlay/overlay.component';
 import { GameHubService } from '../core/hub/game-hub.service';
 import { GameStateService } from '../core/game-state/game-state.service';
 import { PlayerIdentityService } from '../core/player/player-identity.service';
@@ -25,12 +25,12 @@ const delay = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms))
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [GridPositionPipe, DiceComponent, PartyFramesComponent],
+  imports: [GridPositionPipe, DiceComponent, PartyFramesComponent, OverlayComponent],
   templateUrl: './game.component.html',
   styleUrl: './game.component.scss',
 })
 export class GameComponent implements OnDestroy {
-  readonly board = BOARD;
+  readonly board = computed(() => this.gameState.state()?.board ?? []);
 
   @ViewChild(DiceComponent) private dice?: DiceComponent;
 
@@ -38,6 +38,7 @@ export class GameComponent implements OnDestroy {
   private readonly localPlayerId: string;
 
   readonly showDice = signal(false);
+  readonly overlayTitle = signal<string | null>(null);
 
   readonly tokenPositions = computed(() => {
     const players = this.gameState.state()?.players ?? [];
@@ -80,10 +81,7 @@ export class GameComponent implements OnDestroy {
     });
 
     this.hub.on<string>('TurnChangedEvent').subscribe(raw => {
-      this.eventQueue = this.eventQueue.then(() => {
-        const event = JSON.parse(raw) as { ActivePlayerId: string };
-        this.gameState.updateActivePlayer(event.ActivePlayerId);
-      });
+      this.eventQueue = this.eventQueue.then(() => this.handleTurnChangedEvent(raw));
     });
   }
 
@@ -97,7 +95,7 @@ export class GameComponent implements OnDestroy {
       this.animatedTiles().get(this.localPlayerId) ??
       this.gameState.state()?.players.find(p => p.playerId === this.localPlayerId)?.currentTile ??
       1;
-    const totalTiles = this.board.length;
+    const totalTiles = this.board().length;
     const targetTile = (currentTile + squaresToMove) % totalTiles;
 
     await this.animatePlayerTo(this.localPlayerId, targetTile);
@@ -110,6 +108,16 @@ export class GameComponent implements OnDestroy {
         playerId: this.localPlayerId,
       })
       .subscribe();
+  }
+
+  private async handleTurnChangedEvent(raw: string): Promise<void> {
+    const event = JSON.parse(raw) as { ActivePlayerId: string };
+    if (event.ActivePlayerId === this.localPlayerId) {
+      this.overlayTitle.set('Your turn!');
+      await delay(3000);
+      this.overlayTitle.set(null);
+    }
+    this.gameState.updateActivePlayer(event.ActivePlayerId);
   }
 
   private async handleMoveEvent(raw: string): Promise<void> {
@@ -130,7 +138,7 @@ export class GameComponent implements OnDestroy {
   }
 
   private async animatePlayerTo(playerId: string, targetTile: number): Promise<void> {
-    const totalTiles = this.board.length;
+    const totalTiles = this.board().length;
     let tile =
       this.animatedTiles().get(playerId) ??
       this.gameState.state()?.players.find(p => p.playerId === playerId)?.currentTile ??

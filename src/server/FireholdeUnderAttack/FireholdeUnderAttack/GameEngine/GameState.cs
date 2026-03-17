@@ -67,5 +67,5 @@ public class BoardState
 public class TileState
 {
     public int Id { get; set; }
-    public string Type { get; set; } = "";
+    public BoardTileType Type { get; set; }
 }

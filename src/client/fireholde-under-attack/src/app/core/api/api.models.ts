@@ -4,12 +4,17 @@ export interface LobbyPlayer {
   currentTile: number;
 }
 
+export interface TileState {
+  id: number;
+  type: string;
+}
+
 export interface GameState {
   players: LobbyPlayer[];
   ownerId: string;
   activePlayerId: string;
   state: number;
-  board: { tiles: unknown[] };
+  board: TileState[];
   sequenceNumber: number;
 }
 

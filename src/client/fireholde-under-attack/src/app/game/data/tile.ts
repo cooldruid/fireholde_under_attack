@@ -1,4 +1,4 @@
 export type Tile = {
-    id: number;
-    type: 'start' | 'shop';
+  id: number;
+  type: string;
 }

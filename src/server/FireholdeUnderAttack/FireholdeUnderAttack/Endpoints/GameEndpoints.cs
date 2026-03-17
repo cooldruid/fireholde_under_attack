@@ -40,7 +40,8 @@ public static class GameEndpoints
                     s.State.ToString(),
                     s.ActivePlayerId,
                     s.Round,
-                    s.Players.Select(p => new PlayerStateResponse(p.PlayerId, p.PlayerName, p.CurrentTile, p.Health)).ToList()
+                    s.Players.Select(p => new PlayerStateResponse(p.PlayerId, p.PlayerName, p.CurrentTile, p.Health)).ToList(),
+                    s.Board.Tiles.Select(t => new TileStateResponse(t.Id, t.Type.ToString())).ToList()
                 ));
             }
             catch (ArgumentException)
@@ -78,6 +79,8 @@ public record GameStateResponse(
     string State,
     Guid? ActivePlayerId,
     int Round,
-    List<PlayerStateResponse> Players);
+    List<PlayerStateResponse> Players,
+    List<TileStateResponse> Board);
 
 public record PlayerStateResponse(Guid PlayerId, string PlayerName, int CurrentTile, int Health);
+public record TileStateResponse(int Id, string Type);
