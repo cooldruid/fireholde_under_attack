@@ -7,25 +7,56 @@ public class Level2CardCatalog
     public static readonly IReadOnlyDictionary<string, CardDefinition> Cards =
         new Dictionary<string, CardDefinition>
         {
-            // Level 1
-            ["healing_potion"] = new(
-                Id: "healing_potion",
-                Name: "Healing Potion",
-                Description: "Restore 10 health.",
-                Price: 20,
-                Level: 1,
-                Usage: CardUsage.Active,
+            ["glasses_of_negotiation"] = new(
+                Id: "glasses_of_negotiation",
+                Name: "Glasses of Negotiation",
+                Description: "You really know what the people need! When you step on a Quest tile, choose one of 3 quests instead of just getting one",
+                Price: 40,
+                Level: 2,
+                Usage: CardUsage.Passive,
                 Effect: (state, playerId) =>
                 {
-                    var player = state.Players.First(p => p.PlayerId == playerId);
-                    player.Health += 10;
+                    
                 }
             ),
-
-            // Level 2
-            // ...
-
-            // Level 3
-            // ...
+            
+            ["heart_shaped_shield"] = new(
+                Id: "heart_shaped_shield",
+                Name: "Heart-Shaped Shield",
+                Description: "Increase your current and maximum health by 15",
+                Price: 40,
+                Level: 2,
+                Usage: CardUsage.Passive,
+                Effect: (state, playerId) =>
+                {
+                    
+                }
+            ),
+            
+            ["majestic_trinket_tablet"] = new(
+                Id: "majestic_trinket_tablet",
+                Name: "Majestic Trinket Tablet",
+                Description: "Does nothing? Has some cool trinket slots for a sword, shield and crown though",
+                Price: 40,
+                Level: 2,
+                Usage: CardUsage.Passive,
+                Effect: (state, playerId) =>
+                {
+                    
+                }
+            ),
+            
+            ["shiny_crystal"] = new(
+                Id: "shiny_crystal",
+                Name: "Shiny Crystal",
+                Description: "You can now sell cards for 50% their price in shops",
+                Price: 40,
+                Level: 2,
+                Usage: CardUsage.Passive,
+                Effect: (state, playerId) =>
+                {
+                    
+                }
+            ),
         };
 }

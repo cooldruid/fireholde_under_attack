@@ -11,15 +11,68 @@ public class Level1CardCatalog
             ["healing_potion"] = new(
                 Id: "healing_potion",
                 Name: "Healing Potion",
-                Description: "Restore 10 health.",
+                Description: "Restore 8 health.",
                 Price: 20,
                 Level: 1,
                 Usage: CardUsage.Active,
                 Effect: (state, playerId) =>
                 {
                     var player = state.Players.First(p => p.PlayerId == playerId);
-                    player.Health += 10;
+                    player.Health += 8;
                 }
-            )
+            ),
+            
+            ["shrimp"] = new(
+                Id: "shrimp",
+                Name: "Shrimp",
+                Description: "Get 0-50 Gold",
+                Price: 20,
+                Level: 1,
+                Usage: CardUsage.Active,
+                Effect: (state, playerId) =>
+                {
+                    var gold = Random.Shared.Next(0, 51);
+                }
+            ),
+            
+            ["scroll_of_kindle"] = new(
+                Id: "scroll_of_kindle",
+                Name: "Scroll of Kindle",
+                Description: "Deal 5 damage",
+                Price: 20,
+                Level: 1,
+                Usage: CardUsage.Active,
+                Effect: (state, playerId) =>
+                {
+                    
+                }
+            ),
+            
+            // Passive
+            ["sword"] = new(
+                Id: "sword",
+                Name: "Sword",
+                Description: "Your Attack action deals 1 more damage. (How does that help a wizard?)",
+                Price: 20,
+                Level: 1,
+                Usage: CardUsage.Passive,
+                Effect: (state, playerId) =>
+                {
+                    
+                }
+            ),
+            
+            ["walking_shoes"] = new(
+                Id: "walking_shoes",
+                Name: "Walking Shoes",
+                Description: "Increase the amount of tiles you move with 1",
+                Price: 20,
+                Level: 1,
+                Usage: CardUsage.Passive,
+                Effect: (state, playerId) =>
+                {
+                    
+                }
+            ),
         };
 }
