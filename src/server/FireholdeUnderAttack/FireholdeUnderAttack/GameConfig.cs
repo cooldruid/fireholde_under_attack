@@ -1,19 +1,17 @@
-using FireholdeUnderAttack.GameEngine;
+using FireholdeUnderAttack.Data;
 
-namespace FireholdeUnderAttack.Constants;
+namespace FireholdeUnderAttack;
 
-public enum BoardTileType
+public static class GameConfig
 {
-    Start,
-    Shop,
-    Quest,
-    Orb,
-    Empty,
-    Graveyard
-}
-public static class BoardConstants
-{
-    public static List<TileState> Board =
+    public const int StartingHealth = 50;
+    public const int StartingMaxHealth = 50;
+    public const int StartingGold = 100;
+    public const int BossStartingHealth = 500;
+
+    public static readonly IReadOnlyList<string> StartingActions = ["move", "attack"];
+    
+    public static List<Tile> Board =
     [
         new() { Id = 0, Type = BoardTileType.Start },
         new() { Id = 1, Type = BoardTileType.Empty },

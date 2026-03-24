@@ -1,4 +1,5 @@
 using FireholdeUnderAttack.Commands;
+using FireholdeUnderAttack.Data;
 using FireholdeUnderAttack.Events;
 using FireholdeUnderAttack.GameEngine.Saga;
 using static FireholdeUnderAttack.GameEngine.GameStateType;
@@ -25,7 +26,7 @@ internal static class JoinGameCommandSaga
     private static void AddPlayer(JoinGameCommand cmd, GameState state)
     {
         var index = state.Players.Max(p => p.PlayerIndex) + 1;
-        state.Players.Add(new PlayerState { PlayerId = cmd.PlayerId, PlayerIndex = index, PlayerName = cmd.PlayerName, CurrentTile = 0, Health = 50 });
+        state.Players.Add(Player.Create(cmd.PlayerId, index, cmd.PlayerName));
     }
 
     private static IEvent PlayerJoined(JoinGameCommand cmd, GameState state) =>

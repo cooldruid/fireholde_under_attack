@@ -14,7 +14,7 @@ public class Level5CardCatalog
                 Price: 200,
                 Level: 5,
                 Usage: CardUsage.Passive,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, targetId) =>
                 {
                     
                 }
@@ -27,7 +27,7 @@ public class Level5CardCatalog
                 Price: 200,
                 Level: 5,
                 Usage: CardUsage.Passive,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, targetId) =>
                 {
                     
                 }

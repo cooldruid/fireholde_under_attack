@@ -1,4 +1,5 @@
 using FireholdeUnderAttack.Commands;
+using FireholdeUnderAttack.Data;
 using FireholdeUnderAttack.Events;
 using FireholdeUnderAttack.GameEngine;
 
@@ -35,7 +36,7 @@ public class MoveCommandTests
         // Arrange
         var secondPlayerId = Guid.NewGuid();
         var state = BuildState(GameStateType.PlayerTurn);
-        state.Players.Add(new PlayerState { PlayerId = secondPlayerId, CurrentTile = 1, Health = 50 });
+        state.Players.Add(Player.Create(secondPlayerId, 1, "Player 2"));
         var initialTile = state.Players.First(p => p.PlayerId == PlayerId).CurrentTile;
 
         // Act
@@ -120,7 +121,7 @@ public class MoveCommandTests
         // Arrange
         var secondPlayerId = Guid.NewGuid();
         var state = BuildState(GameStateType.PlayerTurn);
-        state.Players.Add(new PlayerState { PlayerId = secondPlayerId, CurrentTile = 1, Health = 50 });
+        state.Players.Add(Player.Create(secondPlayerId, 1, "Player 2"));
         var command = BuildCommand(playerId: secondPlayerId); // valid player, but not active
 
         // Act

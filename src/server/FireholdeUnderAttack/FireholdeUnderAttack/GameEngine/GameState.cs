@@ -1,4 +1,6 @@
+using FireholdeUnderAttack.Cards;
 using FireholdeUnderAttack.Constants;
+using FireholdeUnderAttack.Data;
 
 namespace FireholdeUnderAttack.GameEngine;
 
@@ -7,37 +9,25 @@ public class GameState
     public Guid GameId { get; set; }
     public Guid OwnerId { get; set; }
     public int SequenceNumber { get; set; }
-    public List<PlayerState> Players { get; set; } = [];
+    public List<Player> Players { get; set; } = [];
     public GameStateType State { get; set; }
-    public required BoardState Board { get; set; }
+    public required Board Board { get; set; }
+    public required Villain Villain { get; set; }
     public Guid? ActivePlayerId { get; set; }
     public int ActivePlayerIndex { get; set; }
     public int Round { get; set; }
 
-    private GameState()
-    { }
+    private GameState() { }
 
     public static GameState Create(Guid gameOwnerId, string ownerName)
     {
         return new GameState()
         {
             OwnerId = gameOwnerId,
-            Players =
-            [
-                new()
-                {
-                    PlayerId = gameOwnerId,
-                    PlayerIndex = 0,
-                    PlayerName = ownerName,
-                    CurrentTile = 0,
-                    Health = 50
-                }
-            ],
+            Players = [Player.Create(gameOwnerId, 0, ownerName)],
             State = GameStateType.Initial,
-            Board = new()
-            {
-                Tiles = BoardConstants.Board
-            }
+            Board = Board.Create(GameConfig.Board),
+            Villain = Villain.Create(GameConfig.BossStartingHealth)
         };
     }
 }
@@ -48,24 +38,4 @@ public enum GameStateType
     PlayerTurn = 1,
     VillainTurn = 2,
     Final = 3
-}
-
-public class PlayerState
-{
-    public Guid PlayerId { get; set; }
-    public int PlayerIndex { get; set; }
-    public string PlayerName { get; set; } = "";
-    public int CurrentTile { get; set; }
-    public int Health { get; set; }
-}
-
-public class BoardState
-{
-    public List<TileState> Tiles { get; set; } = [];
-}
-
-public class TileState
-{
-    public int Id { get; set; }
-    public BoardTileType Type { get; set; }
 }

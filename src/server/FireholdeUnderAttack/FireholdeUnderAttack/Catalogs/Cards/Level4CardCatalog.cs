@@ -14,7 +14,7 @@ public class Level4CardCatalog
                 Price: 110,
                 Level: 4,
                 Usage: CardUsage.Active,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, targetId) =>
                 {
                     
                 }
@@ -27,7 +27,8 @@ public class Level4CardCatalog
                 Price: 110,
                 Level: 4,
                 Usage: CardUsage.Active,
-                Effect: (state, playerId) =>
+                TargetType: CardTargetType.Enemy,
+                Effect: (state, playerId, targetId) =>
                 {
                     
                 }
@@ -40,7 +41,7 @@ public class Level4CardCatalog
                 Price: 110,
                 Level: 4,
                 Usage: CardUsage.Passive,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, targetId) =>
                 {
                     
                 }
@@ -53,7 +54,7 @@ public class Level4CardCatalog
                 Price: 110,
                 Level: 4,
                 Usage: CardUsage.Passive,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, targetId) =>
                 {
                     
                 }
@@ -66,7 +67,7 @@ public class Level4CardCatalog
                 Price: 110,
                 Level: 4,
                 Usage: CardUsage.Passive,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, targetId) =>
                 {
                     
                 }

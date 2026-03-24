@@ -1,4 +1,5 @@
 using FireholdeUnderAttack.Commands;
+using FireholdeUnderAttack.Data;
 using FireholdeUnderAttack.Events;
 using FireholdeUnderAttack.GameEngine;
 
@@ -85,9 +86,9 @@ public class JoinGameCommandTests
     {
         // Arrange
         var state = BuildState(GameStateType.Initial);
-        state.Players.Add(new PlayerState { PlayerId = Guid.NewGuid(), CurrentTile = 1, Health = 50 });
-        state.Players.Add(new PlayerState { PlayerId = Guid.NewGuid(), CurrentTile = 1, Health = 50 });
-        state.Players.Add(new PlayerState { PlayerId = Guid.NewGuid(), CurrentTile = 1, Health = 50 });
+        state.Players.Add(Player.Create(Guid.NewGuid(), 1, "Player 2"));
+        state.Players.Add(Player.Create(Guid.NewGuid(), 2, "Player 3"));
+        state.Players.Add(Player.Create(Guid.NewGuid(), 3, "Player 4"));
         // 4 players total now (owner + 3 added)
 
         // Act

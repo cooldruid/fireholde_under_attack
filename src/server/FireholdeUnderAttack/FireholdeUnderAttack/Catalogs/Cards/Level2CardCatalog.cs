@@ -14,7 +14,7 @@ public class Level2CardCatalog
                 Price: 40,
                 Level: 2,
                 Usage: CardUsage.Passive,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, targetId) =>
                 {
                     
                 }
@@ -27,7 +27,7 @@ public class Level2CardCatalog
                 Price: 40,
                 Level: 2,
                 Usage: CardUsage.Passive,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, targetId) =>
                 {
                     
                 }
@@ -40,7 +40,7 @@ public class Level2CardCatalog
                 Price: 40,
                 Level: 2,
                 Usage: CardUsage.Passive,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, targetId) =>
                 {
                     
                 }
@@ -53,7 +53,7 @@ public class Level2CardCatalog
                 Price: 40,
                 Level: 2,
                 Usage: CardUsage.Passive,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, targetId) =>
                 {
                     
                 }

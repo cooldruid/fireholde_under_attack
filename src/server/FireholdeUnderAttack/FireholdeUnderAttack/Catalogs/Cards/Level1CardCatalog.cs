@@ -15,7 +15,8 @@ public class Level1CardCatalog
                 Price: 20,
                 Level: 1,
                 Usage: CardUsage.Active,
-                Effect: (state, playerId) =>
+                TargetType: CardTargetType.Ally,
+                Effect: (state, playerId, _) =>
                 {
                     var player = state.Players.First(p => p.PlayerId == playerId);
                     player.Health += 8;
@@ -29,9 +30,11 @@ public class Level1CardCatalog
                 Price: 20,
                 Level: 1,
                 Usage: CardUsage.Active,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, _) =>
                 {
                     var gold = Random.Shared.Next(0, 51);
+                    var player = state.Players.First(p => p.PlayerId == playerId);
+                    player.Gold += gold;
                 }
             ),
             
@@ -42,12 +45,13 @@ public class Level1CardCatalog
                 Price: 20,
                 Level: 1,
                 Usage: CardUsage.Active,
-                Effect: (state, playerId) =>
+                TargetType: CardTargetType.Enemy,
+                Effect: (state, playerId, targetId) =>
                 {
                     
                 }
             ),
-            
+
             // Passive
             ["sword"] = new(
                 Id: "sword",
@@ -56,9 +60,9 @@ public class Level1CardCatalog
                 Price: 20,
                 Level: 1,
                 Usage: CardUsage.Passive,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, targetId) =>
                 {
-                    
+
                 }
             ),
             
@@ -69,9 +73,9 @@ public class Level1CardCatalog
                 Price: 20,
                 Level: 1,
                 Usage: CardUsage.Passive,
-                Effect: (state, playerId) =>
+                Effect: (state, playerId, targetId) =>
                 {
-                    
+
                 }
             ),
         };

@@ -1,9 +1,8 @@
 using FireholdeUnderAttack.GameEngine;
-using FireholdeUnderAttack.GameEngine.Saga;
 
 namespace FireholdeUnderAttack.Cards;
 
-public delegate void CardEffect(GameState state, Guid playerId);
+public delegate void CardEffect(GameState state, Guid playerId, Guid? targetId);
 
 public record CardDefinition(
     string Id,
@@ -13,9 +12,9 @@ public record CardDefinition(
     int Level,
     CardUsage Usage,
     CardEffect Effect,
-    PassiveTrigger? PassiveTrigger = null
+    CardTargetType TargetType = CardTargetType.None
 );
 
-public enum CardUsage { Active, Passive, Both }
+public enum CardUsage { Active, Passive }
 
-public enum PassiveTrigger { OnMove, OnDamage, OnRoundStart }
+public enum CardTargetType { None, Enemy, Ally }
