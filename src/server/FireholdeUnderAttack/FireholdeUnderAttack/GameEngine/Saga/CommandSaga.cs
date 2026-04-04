@@ -73,6 +73,46 @@ public sealed class CommandSaga<TCommand> : ICommandSaga where TCommand : IComma
         return this;
     }
 
+    public CommandSaga<TCommand> Emit(
+        Func<TCommand, GameState, SagaContext, IEvent> factory,
+        Func<TCommand, GameState, SagaContext, bool> when)
+    {
+        _steps.Add(new EmitStep(factory, when));
+        return this;
+    }
+
+    public CommandSaga<TCommand> Emit(
+        Func<TCommand, GameState, IEvent> factory,
+        Func<TCommand, GameState, SagaContext, bool> when)
+    {
+        _steps.Add(new EmitStep((cmd, state, _) => factory(cmd, state), when));
+        return this;
+    }
+
+    // ── State transition ──────────────────────────────────────────────────────
+
+    public CommandSaga<TCommand> TransitionTo(GameStateType nextState)
+    {
+        _steps.Add(new TransitionStep((_, _, _) => nextState));
+        return this;
+    }
+
+    public CommandSaga<TCommand> TransitionTo(Func<TCommand, GameState, SagaContext, GameStateType> selector)
+    {
+        _steps.Add(new TransitionStep(selector));
+        return this;
+    }
+
+    // ── Branching ─────────────────────────────────────────────────────────────
+
+    public BranchBuilder<TKey> Branch<TKey>(Func<TCommand, GameState, SagaContext, TKey> selector)
+        where TKey : notnull
+    {
+        var step = new BranchStep((cmd, state, ctx) => (object)selector(cmd, state, ctx)!);
+        _steps.Add(step);
+        return new BranchBuilder<TKey>(this, step);
+    }
+
     // ── Execution ─────────────────────────────────────────────────────────────
 
     List<IEvent> ICommandSaga.Execute(ICommand command, GameState state)
@@ -80,14 +120,32 @@ public sealed class CommandSaga<TCommand> : ICommandSaga where TCommand : IComma
         var cmd = (TCommand)command;
         var ctx = new SagaContext();
         var events = new List<IEvent>();
+        GameStateType? pendingTransition = null;
 
-        foreach (var step in _steps)
+        var rejection = ExecuteSteps(_steps, cmd, state, ctx, events, ref pendingTransition);
+        if (rejection != null) return [rejection];
+
+        if (pendingTransition.HasValue)
+            state.State = pendingTransition.Value;
+
+        return events;
+    }
+
+    private static IEvent? ExecuteSteps(
+        List<SagaStep> steps,
+        TCommand cmd,
+        GameState state,
+        SagaContext ctx,
+        List<IEvent> events,
+        ref GameStateType? pendingTransition)
+    {
+        foreach (var step in steps)
         {
             switch (step)
             {
                 case GuardStep guard:
                     if (!guard.Predicate(cmd, state, ctx))
-                        return [guard.OnFailure(cmd, state, ctx)];
+                        return guard.OnFailure(cmd, state, ctx);
                     break;
 
                 case MutateStep mutate:
@@ -95,25 +153,94 @@ public sealed class CommandSaga<TCommand> : ICommandSaga where TCommand : IComma
                     break;
 
                 case EmitStep emit:
-                    events.Add(emit.Factory(cmd, state, ctx));
+                    if (emit.When == null || emit.When(cmd, state, ctx))
+                        events.Add(emit.Factory(cmd, state, ctx));
+                    break;
+
+                case TransitionStep transition:
+                    pendingTransition = transition.Selector(cmd, state, ctx);
+                    break;
+
+                case BranchStep branch:
+                    var key = branch.Selector(cmd, state, ctx);
+                    var branchSteps = branch.Cases.TryGetValue(key, out var found)
+                        ? found
+                        : branch.DefaultSteps;
+                    if (branchSteps != null)
+                    {
+                        var branchRejection = ExecuteSteps(branchSteps, cmd, state, ctx, events, ref pendingTransition);
+                        if (branchRejection != null) return branchRejection;
+                    }
                     break;
             }
         }
-
-        return events;
+        return null;
     }
 
     // ── Step types ────────────────────────────────────────────────────────────
 
-    private abstract record SagaStep;
+    private abstract class SagaStep { }
 
-    private sealed record GuardStep(
-        Func<TCommand, GameState, SagaContext, bool> Predicate,
-        Func<TCommand, GameState, SagaContext, IEvent> OnFailure) : SagaStep;
+    private sealed class GuardStep(
+        Func<TCommand, GameState, SagaContext, bool> predicate,
+        Func<TCommand, GameState, SagaContext, IEvent> onFailure) : SagaStep
+    {
+        public Func<TCommand, GameState, SagaContext, bool> Predicate { get; } = predicate;
+        public Func<TCommand, GameState, SagaContext, IEvent> OnFailure { get; } = onFailure;
+    }
 
-    private sealed record MutateStep(
-        Action<TCommand, GameState, SagaContext> Action) : SagaStep;
+    private sealed class MutateStep(Action<TCommand, GameState, SagaContext> action) : SagaStep
+    {
+        public Action<TCommand, GameState, SagaContext> Action { get; } = action;
+    }
 
-    private sealed record EmitStep(
-        Func<TCommand, GameState, SagaContext, IEvent> Factory) : SagaStep;
+    private sealed class EmitStep(
+        Func<TCommand, GameState, SagaContext, IEvent> factory,
+        Func<TCommand, GameState, SagaContext, bool>? when = null) : SagaStep
+    {
+        public Func<TCommand, GameState, SagaContext, IEvent> Factory { get; } = factory;
+        public Func<TCommand, GameState, SagaContext, bool>? When { get; } = when;
+    }
+
+    private sealed class TransitionStep(Func<TCommand, GameState, SagaContext, GameStateType> selector) : SagaStep
+    {
+        public Func<TCommand, GameState, SagaContext, GameStateType> Selector { get; } = selector;
+    }
+
+    private sealed class BranchStep(Func<TCommand, GameState, SagaContext, object> selector) : SagaStep
+    {
+        public Func<TCommand, GameState, SagaContext, object> Selector { get; } = selector;
+        public Dictionary<object, List<SagaStep>> Cases { get; } = new();
+        public List<SagaStep>? DefaultSteps { get; set; }
+    }
+
+    // ── Branch builder ────────────────────────────────────────────────────────
+
+    public sealed class BranchBuilder<TKey> where TKey : notnull
+    {
+        private readonly CommandSaga<TCommand> _parent;
+        private readonly BranchStep _step;
+
+        internal BranchBuilder(CommandSaga<TCommand> parent, object step)
+        {
+            _parent = parent;
+            _step = (BranchStep)step;
+        }
+
+        public BranchBuilder<TKey> Case(TKey key, Func<CommandSaga<TCommand>, CommandSaga<TCommand>> configure)
+        {
+            var sub = new CommandSaga<TCommand>();
+            configure(sub);
+            _step.Cases[(object)key!] = sub._steps;
+            return this;
+        }
+
+        public CommandSaga<TCommand> Default(Func<CommandSaga<TCommand>, CommandSaga<TCommand>> configure)
+        {
+            var sub = new CommandSaga<TCommand>();
+            configure(sub);
+            _step.DefaultSteps = sub._steps;
+            return _parent;
+        }
+    }
 }

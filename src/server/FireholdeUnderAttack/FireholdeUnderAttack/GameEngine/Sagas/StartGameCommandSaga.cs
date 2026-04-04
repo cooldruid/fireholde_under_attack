@@ -1,4 +1,5 @@
 using FireholdeUnderAttack.Commands;
+using FireholdeUnderAttack.Data;
 using FireholdeUnderAttack.Events;
 using FireholdeUnderAttack.GameEngine.Saga;
 using static FireholdeUnderAttack.GameEngine.GameStateType;
@@ -11,24 +12,29 @@ internal static class StartGameCommandSaga
         .WhenIn(Initial)
         .Validate(HasAtLeastOnePlayer)
         .Execute(InitialiseTurn)
-        .Emit(GameStarted);
+        .Emit(GameStarted)
+        .TransitionTo(PlayerTurnStarting);
 
     private static bool HasAtLeastOnePlayer(StartGameCommand _, GameState state) =>
         state.Players.Count > 0;
 
     private static void InitialiseTurn(StartGameCommand _, GameState state)
     {
-        state.ActivePlayerIndex = 0;
-        state.ActivePlayerId = state.Players[0].PlayerId;
+        var firstPlayer = state.Players[0];
+        state.TurnMarker = new TurnMarker
+        {
+            ActivePlayerId = firstPlayer.PlayerId,
+            ActivePlayerIndex = 0,
+            ActionsRemaining = firstPlayer.ActionsPerTurn
+        };
         state.Round = 1;
-        state.State = PlayerTurn;
     }
 
     private static IEvent GameStarted(StartGameCommand _, GameState state) =>
         new GameStartedEvent
         {
             GameId = state.GameId,
-            ActivePlayerId = state.Players[0].PlayerId,
+            ActivePlayerId = state.TurnMarker!.ActivePlayerId,
             Round = state.Round
         };
 }

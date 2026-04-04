@@ -38,11 +38,11 @@ public class GameInstance
             try
             {
                 var stateMachine = new GameStateMachine(_state);
-                var events = stateMachine.Handle(command);
-                await BroadcastAsync(events);
+                var result = stateMachine.Handle(command);
+                await BroadcastAsync(result.Events);
 
-                if (_state.State == GameStateType.VillainTurn)
-                    await Enqueue(new VillainTurnCommand());
+                if (result.OnEnterCommand != null)
+                    await Enqueue(result.OnEnterCommand);
             }
             catch (Exception ex)
             {

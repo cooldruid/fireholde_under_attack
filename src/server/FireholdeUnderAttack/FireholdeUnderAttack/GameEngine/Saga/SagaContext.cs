@@ -12,6 +12,8 @@ public sealed class SagaContext
 
     public T Get<T>(string key) => (T)_data[key];
 
+    public bool Has(string key) => _data.ContainsKey(key);
+
     public bool TryGet<T>(string key, out T value)
     {
         if (_data.TryGetValue(key, out var obj) && obj is T typed)

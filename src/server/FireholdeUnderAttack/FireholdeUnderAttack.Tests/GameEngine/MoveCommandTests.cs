@@ -17,8 +17,12 @@ public class MoveCommandTests
         state.State = stateType;
         if (stateType == GameStateType.PlayerTurn)
         {
-            state.ActivePlayerId = playerId ?? PlayerId;
-            state.ActivePlayerIndex = 0;
+            state.TurnMarker = new TurnMarker
+            {
+                ActivePlayerId = playerId ?? PlayerId,
+                ActivePlayerIndex = 0,
+                ActionsRemaining = 3
+            };
         }
         return state;
     }
@@ -31,54 +35,37 @@ public class MoveCommandTests
     // ── Broad flow tests ──────────────────────────────────────────────────────
 
     [Fact]
-    public void GameStateMachine_OnMoveCommand_MovesPlayerAndAdvancesToNextPlayer()
+    public void GameStateMachine_OnMoveCommand_EmitsMoveEventAndTransitionsToPlayerTurnStarting()
     {
         // Arrange
-        var secondPlayerId = Guid.NewGuid();
         var state = BuildState(GameStateType.PlayerTurn);
-        state.Players.Add(Player.Create(secondPlayerId, 1, "Player 2"));
+        state.Board = Board.Create(Enumerable.Range(0, 36).Select(i => new Tile { Id = i, Type = BoardTileType.Empty }).ToList());
         var initialTile = state.Players.First(p => p.PlayerId == PlayerId).CurrentTile;
 
         // Act
-        var events = new GameStateMachine(state).Handle(BuildCommand());
+        var events = new GameStateMachine(state).Handle(BuildCommand()).Events;
 
         // Assert
-        Assert.Equal(2, events.Count);
-
-        var move = Assert.IsType<MoveEvent>(events[0]);
+        var move = Assert.IsType<MoveEvent>(Assert.Single(events));
         Assert.Equal(PlayerId, move.PlayerId);
         Assert.InRange(move.DiceRoll, 1, 6);
-        Assert.True(move.NewTileId > initialTile);
+        Assert.NotEqual(initialTile, move.NewTileId);
         Assert.Equal(move.NewTileId, state.Players.First(p => p.PlayerId == PlayerId).CurrentTile);
 
-        var turnChanged = Assert.IsType<TurnChangedEvent>(events[1]);
-        Assert.False(turnChanged.IsVillainTurn);
-        Assert.Equal(secondPlayerId, turnChanged.ActivePlayerId);
-        Assert.Equal(GameId, turnChanged.GameId);
-        Assert.Equal(secondPlayerId, state.ActivePlayerId);
+        Assert.Equal(GameStateType.PlayerTurnStarting, state.State);
     }
 
     [Fact]
-    public void GameStateMachine_OnMoveCommand_AfterLastPlayer_TransitionsToVillainTurn()
+    public void GameStateMachine_OnMoveCommand_DecrementsActionsRemaining()
     {
         // Arrange
-        var state = BuildState(GameStateType.PlayerTurn); // single player = last player
+        var state = BuildState(GameStateType.PlayerTurn);
 
         // Act
-        var events = new GameStateMachine(state).Handle(BuildCommand());
+        new GameStateMachine(state).Handle(BuildCommand());
 
         // Assert
-        Assert.Equal(2, events.Count);
-        Assert.IsType<MoveEvent>(events[0]);
-
-        var turnChanged = Assert.IsType<TurnChangedEvent>(events[1]);
-        Assert.True(turnChanged.IsVillainTurn);
-        Assert.Null(turnChanged.ActivePlayerId);
-        Assert.Equal(GameId, turnChanged.GameId);
-
-        Assert.Equal(GameStateType.VillainTurn, state.State);
-        Assert.Null(state.ActivePlayerId);
-        Assert.Equal(1, state.Round);
+        Assert.Equal(2, state.TurnMarker!.ActionsRemaining);
     }
 
     // ── Rejection scenarios ───────────────────────────────────────────────────
@@ -93,7 +80,7 @@ public class MoveCommandTests
         var state = BuildState(stateType);
 
         // Act
-        var events = new GameStateMachine(state).Handle(BuildCommand());
+        var events = new GameStateMachine(state).Handle(BuildCommand()).Events;
 
         // Assert
         var rejected = Assert.Single(events);
@@ -105,10 +92,10 @@ public class MoveCommandTests
     {
         // Arrange
         var state = BuildState(GameStateType.PlayerTurn);
-        var command = BuildCommand(playerId: Guid.NewGuid()); // unknown player
+        var command = BuildCommand(playerId: Guid.NewGuid());
 
         // Act
-        var events = new GameStateMachine(state).Handle(command);
+        var events = new GameStateMachine(state).Handle(command).Events;
 
         // Assert
         var rejected = Assert.IsType<CommandRejectedEvent>(Assert.Single(events));
@@ -122,10 +109,10 @@ public class MoveCommandTests
         var secondPlayerId = Guid.NewGuid();
         var state = BuildState(GameStateType.PlayerTurn);
         state.Players.Add(Player.Create(secondPlayerId, 1, "Player 2"));
-        var command = BuildCommand(playerId: secondPlayerId); // valid player, but not active
+        var command = BuildCommand(playerId: secondPlayerId);
 
         // Act
-        var events = new GameStateMachine(state).Handle(command);
+        var events = new GameStateMachine(state).Handle(command).Events;
 
         // Assert
         var rejected = Assert.Single(events);

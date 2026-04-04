@@ -5,6 +5,8 @@ using FireholdeUnderAttack.GameEngine.Sagas;
 
 namespace FireholdeUnderAttack.GameEngine;
 
+public record HandleResult(List<IEvent> Events, ICommand? OnEnterCommand);
+
 public class GameStateMachine(GameState gameState)
 {
     public GameState State => gameState;
@@ -17,11 +19,42 @@ public class GameStateMachine(GameState gameState)
         [typeof(VillainTurnCommand)] = VillainTurnCommandSaga.Saga,
     };
 
-    public List<IEvent> Handle(ICommand command)
+    /// <summary>
+    /// On-enter sagas, keyed by the state being entered. Register a
+    /// <see cref="CommandSaga{OnEnterCommand}"/> here — no WhenIn guard needed,
+    /// the dispatch guarantees the correct state is active.
+    /// </summary>
+    internal static readonly Dictionary<GameStateType, ICommandSaga> OnEnterSagas = new()
     {
-        if (!Sagas.TryGetValue(command.GetType(), out var saga))
-            throw new NotImplementedException($"No saga registered for command '{command.GetType().Name}'");
+        // Register on-enter sagas here, e.g.:
+        // [GameStateType.PlayerActionEnding] = new CommandSaga<OnEnterCommand>()
+        //     .Execute(...)
+        //     .TransitionTo(...)
+    };
 
-        return saga.Execute(command, gameState);
+    public HandleResult Handle(ICommand command)
+    {
+        ICommandSaga saga;
+
+        if (command is OnEnterCommand)
+        {
+            if (!OnEnterSagas.TryGetValue(gameState.State, out saga!))
+                return new HandleResult([], null);
+        }
+        else
+        {
+            if (!Sagas.TryGetValue(command.GetType(), out saga!))
+                throw new NotImplementedException($"No saga registered for command '{command.GetType().Name}'");
+        }
+
+        var previousState = gameState.State;
+        var events = saga.Execute(command, gameState);
+        var newState = gameState.State;
+
+        ICommand? onEnterCommand = null;
+        if (newState != previousState && OnEnterSagas.ContainsKey(newState))
+            onEnterCommand = new OnEnterCommand();
+
+        return new HandleResult(events, onEnterCommand);
     }
 }

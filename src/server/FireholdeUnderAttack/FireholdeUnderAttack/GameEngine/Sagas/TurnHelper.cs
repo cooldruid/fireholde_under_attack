@@ -1,37 +1,44 @@
-using FireholdeUnderAttack.GameEngine.Saga;
-using static FireholdeUnderAttack.GameEngine.GameStateType;
-
 namespace FireholdeUnderAttack.GameEngine.Sagas;
 
 /// <summary>
-/// The single place where the turn cursor is mutated.
-/// Call AdvancePlayerTurn at the end of every player-action saga.
-/// Call AdvanceVillainTurn at the end of the villain-turn saga.
+/// Shared turn-cursor helpers called from sagas.
+/// Does NOT set state.State — sagas use TransitionTo for that.
 /// </summary>
 internal static class TurnHelper
 {
-    public static void AdvancePlayerTurn(GameState state, SagaContext ctx)
+    /// <summary>
+    /// Advances the cursor to the next player, or sets up villain turn if all players have gone.
+    /// Returns true if transitioning to villain turn.
+    /// </summary>
+    public static bool AdvanceToNextPlayerOrVillain(GameState state)
     {
-        var nextIndex = (state.ActivePlayerIndex + 1) % state.Players.Count;
+        var nextIndex = (state.TurnMarker!.ActivePlayerIndex + 1) % state.Players.Count;
         if (nextIndex == 0)
         {
-            state.State = VillainTurn;
-            state.ActivePlayerId = null;
+            state.TurnMarker.ActivePlayerId = null;
+            state.TurnMarker.ActivePlayerIndex = -1;
             state.Round++;
-            ctx.Set("isVillainTurn", true);
+            return true;
         }
-        else
-        {
-            state.ActivePlayerIndex = nextIndex;
-            state.ActivePlayerId = state.Players.First(x => x.PlayerIndex == nextIndex).PlayerId;
-            ctx.Set("isVillainTurn", false);
-        }
+
+        var nextPlayer = state.Players.First(p => p.PlayerIndex == nextIndex);
+        state.TurnMarker.ActivePlayerId = nextPlayer.PlayerId;
+        state.TurnMarker.ActivePlayerIndex = nextIndex;
+        state.TurnMarker.ActionsRemaining = nextPlayer.ActionsPerTurn;
+        return false;
     }
 
+    /// <summary>
+    /// Resets the turn cursor to player 0 at the start of the player phase after villain turn.
+    /// </summary>
     public static void AdvanceVillainTurn(GameState state)
     {
-        state.ActivePlayerIndex = 0;
-        state.ActivePlayerId = state.Players.First(x => x.PlayerIndex == 0).PlayerId;
-        state.State = PlayerTurn;
+        var firstPlayer = state.Players.First(p => p.PlayerIndex == 0);
+        state.TurnMarker = new Data.TurnMarker
+        {
+            ActivePlayerId = firstPlayer.PlayerId,
+            ActivePlayerIndex = 0,
+            ActionsRemaining = firstPlayer.ActionsPerTurn
+        };
     }
 }

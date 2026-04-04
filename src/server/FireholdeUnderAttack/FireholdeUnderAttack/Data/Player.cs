@@ -15,6 +15,7 @@ public class Player
     public List<string> Inventory { get; set; } = [];
     public List<string> AvailableActions { get; set; } = [];
     public List<PlayerTrigger> Triggers { get; set; } = [];
+    public int ActionsPerTurn { get; set; }
     
     private Player()
     { }
@@ -28,7 +29,8 @@ public class Player
         Health = GameConfig.StartingHealth,
         MaxHealth = GameConfig.StartingMaxHealth,
         Gold = GameConfig.StartingGold,
-        AvailableActions = [.. GameConfig.StartingActions]
+        AvailableActions = [.. GameConfig.StartingActions],
+        ActionsPerTurn = GameConfig.ActionsPerTurn
     };
 }
 

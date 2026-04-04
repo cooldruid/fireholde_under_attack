@@ -13,8 +13,7 @@ public class GameState
     public GameStateType State { get; set; }
     public required Board Board { get; set; }
     public required Villain Villain { get; set; }
-    public Guid? ActivePlayerId { get; set; }
-    public int ActivePlayerIndex { get; set; }
+    public TurnMarker? TurnMarker { get; set; }
     public int Round { get; set; }
 
     private GameState() { }
@@ -37,5 +36,9 @@ public enum GameStateType
     Initial = 0,
     PlayerTurn = 1,
     VillainTurn = 2,
-    Final = 3
+    Final = 3,
+    PlayerTurnStarting = 4,
+    Shopping = 5,
+    TreasureRoom = 6,
+    PlayerActionEnding = 7
 }

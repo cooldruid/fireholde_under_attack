@@ -43,16 +43,36 @@ Each command is handled by a `CommandSaga<TCommand>` defined in `GameEngine/Saga
 
 ```csharp
 new CommandSaga<MoveCommand>()
-    .WhenIn(Playing)          // state guard → CommandRejectedEvent on failure
-    .Validate(PlayerExists)   // predicate  → CommandRejectedEvent on failure
-    .Execute(RollDiceAndMove) // mutates GameState, can write to SagaContext
-    .Emit(PlayerMoved)        // reads state/context, appends an IEvent to the result
+    .WhenIn(PlayerTurn)                        // state guard → CommandRejectedEvent on failure
+    .Validate(PlayerExists)                    // predicate  → CommandRejectedEvent on failure
+    .Execute(RollDiceAndMove)                  // mutates GameState, can write to SagaContext
+    .Emit(PlayerMoved)                         // reads state/context, appends an IEvent to the result
+    .Emit(TileDamageEvent, when: ctx => ...)   // conditional emit — only appended when predicate is true
+    .TransitionTo(ctx => ctx.Get<GameStateType>("nextState"))  // explicit state transition
+```
+
+**Branch step** — for cases where post-execution steps diverge structurally based on an outcome:
+
+```csharp
+.Branch(ctx => ctx.Get<MoveOutcome>())
+    .Case(MoveOutcome.BlockedByEnemy,
+        saga => saga.Execute(ApplyEnemyDamage)
+                    .Emit(EnemyBlockedEvent)
+                    .TransitionTo(PlayerTurnStarting))
+    .Case(MoveOutcome.LandedOnShop,
+        saga => saga.Emit(PlayerMovedEvent)
+                    .TransitionTo(Shopping))
+    .Default(
+        saga => saga.Emit(PlayerMovedEvent)
+                    .TransitionTo(PlayerTurnStarting))
 ```
 
 - Steps execute in registration order — multiple `.Execute` and `.Emit` calls are allowed and ordered
 - Guards (`.WhenIn`, `.Validate`) short-circuit: on failure they return a `CommandRejectedEvent` immediately and no further steps run
 - `SagaContext` is a per-execution typed key-value bag (`ctx.Set<T>` / `ctx.Get<T>`) for passing data between steps (e.g. a dice roll computed in `.Execute` and read in `.Emit`)
 - `[CallerArgumentExpression]` captures the method name passed to `.Validate` as the rejection reason automatically — no string needed
+- `.TransitionTo(...)` fires **after the saga fully completes** — never mid-execution; state is only changed once all steps have run
+- Branch cases are mini linear sagas and can themselves contain branches, but nesting is a code-smell — prefer flat branches + context-driven `TransitionTo`
 
 ### Adding a new command
 
@@ -83,11 +103,11 @@ new CommandSaga<MoveCommand>()
 ### Key components
 
 - **`GameEngine/Sagas/`** — one file per command; each owns its saga definition and all named step methods
-- **`GameEngine/Saga/CommandSaga.cs`** — fluent saga builder; step types: `GuardStep`, `MutateStep`, `EmitStep`
+- **`GameEngine/Saga/CommandSaga.cs`** — fluent saga builder; step types: `GuardStep`, `MutateStep`, `EmitStep`, `TransitionStep`, `BranchStep`
 - **`GameEngine/Saga/SagaContext.cs`** — per-execution data bag threaded through all steps
-- **`GameEngine/GameStateMachine.cs`** — static registry of `Type → ICommandSaga`; dispatches `Handle(ICommand)` to the right saga
+- **`GameEngine/GameStateMachine.cs`** — two registries: `Type → ICommandSaga` for command dispatch, and `GameStateType → ICommand` for on-enter triggers; after every saga, if state changed and the new state has an on-enter command registered, it is auto-enqueued
 - **`GameEngine/GameInstance.cs`** — per-game actor; owns the command channel, `ProcessLoop`, and `BroadcastAsync` (serializes each event as JSON and pushes to the SignalR group)
-- **`GameEngine/GameState.cs`** — mutable state: player list, board, `GameStateType` (Initial → PlayerTurn ⇄ VillainTurn → Final)
+- **`GameEngine/GameState.cs`** — mutable state: player list, board, `TurnMarker`, `GameStateType`
 - **`Managers/GameInstanceManager.cs`** — DI singleton; factory and registry for `GameInstance` objects
 - **`Endpoints/GameEndpoints.cs`** — minimal API endpoint definitions; one `Map(IEndpointRouteBuilder)` per domain area
 - **`Hubs/EventHub.cs`** — SignalR hub; clients call `JoinGame`/`LeaveGame` to subscribe to a game group
@@ -110,6 +130,61 @@ Returns `202 Accepted`. Results arrive asynchronously via SignalR — the method
 - **Infrastructure actions** (create game, anything that doesn't change `GameState`): handled directly in HTTP endpoints via `GameInstanceManager`
 - **Actions that change game state at lobby level** (join game, start game): go through the state machine — they are game rules
 - **Chat and other orthogonal concerns**: do not go through the state machine
+
+### Game state types
+
+```
+Initial → PlayerTurnStarting → PlayerTurn → PlayerActionEnding → PlayerTurn  (actions remain)
+                                           ↕ Shopping           → PlayerTurnStarting  (turn over)
+                                           ↕ TreasureRoom
+                                           ↕ (other tile states)
+                             → VillainTurn → PlayerTurnStarting → ...
+                                           → Final
+```
+
+- **`Initial`** — lobby; players joining, game not yet started
+- **`PlayerTurnStarting`** — fresh turn setup; on-enter initializes `TurnMarker.ActionsRemaining = player.ActionsPerTurn`, emits `TurnChangedEvent`, transitions to `PlayerTurn`
+- **`PlayerTurn`** — active player can issue actions (move, use card, etc.); action sagas transition to `PlayerActionEnding` when done
+- **`PlayerActionEnding`** — on-enter decrements `ActionsRemaining`; routes back to `PlayerTurn` if actions remain, or to `PlayerTurnStarting` to advance the turn
+- **`Shopping`** — active player landed on a shop tile; can issue `BuyCardCommand` multiple times, exits via `DoneShoppingCommand` which transitions to `PlayerActionEnding`
+- **`TreasureRoom`** — active player selects a free reward card; resolved by `SelectRewardCommand` or `SkipChoiceCommand`, both transition to `PlayerActionEnding`
+- **`VillainTurn`** — villain acts; driven by auto-enqueued `OnEnterCommand`
+- **`Final`** — game over
+
+Tile states (`Shopping`, `TreasureRoom`, etc.) are entered via `.TransitionTo(...)` in `MoveCommandSaga`. Simple tile effects (damage, heal) that need no player input are handled directly in `MoveCommandSaga` with Execute + Emit steps — no new state needed.
+
+### Turn tracking
+
+`GameState` holds a `TurnMarker` (replaces the old `ActivePlayerId` / `ActivePlayerIndex` fields):
+
+```csharp
+public class TurnMarker
+{
+    public Guid ActivePlayerId { get; set; }
+    public int ActivePlayerIndex { get; set; }
+    public int ActionsRemaining { get; set; }
+}
+```
+
+`Player.ActionsPerTurn` stores the player's base action budget (default 3, modifiable by effects). `EnterPlayerTurnStartingCommand` saga initializes `TurnMarker.ActionsRemaining = activePlayer.ActionsPerTurn` at the start of each new player's turn. Each action that costs actions decrements `ActionsRemaining`; `PlayerTurnStarting` on-enter checks whether to continue or advance.
+
+### On-enter triggers
+
+When `GameStateMachine` applies a `.TransitionTo(...)` from a saga, it checks `OnEnterSagas` (a `Dictionary<GameStateType, ICommandSaga>` on `GameStateMachine`). If the new state has an entry, a shared `OnEnterCommand` is auto-enqueued. On the next loop iteration, `Handle` routes it to the correct saga by looking up `OnEnterSagas[currentState]`.
+
+**No per-state command class is needed.** Register on-enter sagas directly in `GameStateMachine.OnEnterSagas`:
+
+```csharp
+[GameStateType.PlayerActionEnding] = new CommandSaga<OnEnterCommand>()
+    .Execute(DecrementActions)
+    .Branch(HasActionsRemaining)
+        .Case(true,  s => s.TransitionTo(PlayerTurn))
+        .Default(    s => s.TransitionTo(PlayerTurnStarting))
+```
+
+- No `.WhenIn(...)` guard needed — the dispatch already guarantees the correct state is active
+- If a state has no entry in `OnEnterSagas`, transitioning to it enqueues nothing
+- On-enter sagas follow the same step API as command sagas (`Execute`, `Emit`, `TransitionTo`, `Branch`)
 
 ### Card system (planned)
 
@@ -134,34 +209,23 @@ record OnMoveTrigger : PassiveTrigger;
 
 **Passive cards** are applied by sagas at the right moment (e.g. `MoveCommandSaga` calls `CardEffectApplicator.ApplyPassivesOnMove`). The trigger type on the definition controls when they fire.
 
-#### Pending choices
+**Relevant commands (planned):**
 
-When a player lands on a shop or fulfills a quest, the game needs to pause and wait for a selection before ending the turn. This is modelled as a nullable `PendingChoice` on `GameState` (no new `GameStateType` values needed):
+- `BuyCardCommand` — buy from shop; deducts gold, adds card to inventory; player may buy multiple times per shop visit
+- `DoneShoppingCommand` — exits shop, costs one action, transitions to `PlayerTurnStarting`
+- `SelectRewardCommand` — pick a free quest reward card; transitions to `PlayerTurnStarting`
+- `SkipChoiceCommand` — decline a treasure/reward; transitions to `PlayerTurnStarting`
+- `UseCardCommand` — use an active card during `PlayerTurn`; does not cost an action
 
-```csharp
-public record PendingChoice(PendingChoiceType Type, List<string> CardIds, IReadOnlySet<Type> AllowedCommands);
-```
+**Relevant events (planned):**
 
-`AllowedCommands` is the set of command types that are permitted to resolve this choice (e.g. `BuyCardCommand`, `SkipChoiceCommand`). **The guard is enforced centrally in `GameStateMachine.Handle()`** — if a pending choice is active and the incoming command type is not in `AllowedCommands`, the state machine returns a `CommandRejectedEvent` immediately, before dispatching to any saga. No individual saga needs a `NoPendingChoice` validation step.
-
-Sagas that create a pending choice (e.g. `MoveCommandSaga` on landing on a shop) set `state.PendingChoice` in an Execute step and conditionally skip turn advancement. Sagas that resolve a pending choice clear `state.PendingChoice` and then advance the turn.
-
-**New commands:**
-
-- `BuyCardCommand` — buy from shop; deducts gold, adds card to inventory, clears pending choice, advances turn
-- `SelectRewardCommand` — pick a free quest reward card; same flow minus gold
-- `SkipChoiceCommand` — decline a shop/reward; clears pending choice, advances turn
-- `UseCardCommand` — use an active card during a player's turn (does not advance turn)
-
-**New events:**
-
-- `ChoicesAvailableEvent` — carries `PendingChoiceType` and list of `CardDefinition` for the client to display
+- `ShopOpenedEvent` — emitted by `EnterShoppingCommand`; carries available `CardDefinition` list for the client to display
 - `CardAcquiredEvent` — card added to a player's inventory
 - `CardUsedEvent` — active card was played
 
 ### Notable gaps (work in progress)
 
-- Tile types in `BoardConstants` are empty strings
-- `GameStateType` transitions (e.g. Initial → WaitingInLobby) are not enforced yet — no commands exist for lobby management
+- On-enter sagas not yet registered in `GameStateMachine.OnEnterSagas` — `PlayerTurnStarting`, `PlayerActionEnding`, `VillainTurn`, `Shopping` all need entries
+- `MoveCommandSaga` still transitions to `PlayerTurnStarting` directly — should transition to `PlayerActionEnding` instead
 - No strongly-typed SignalR hub client interface yet (`Hub<T>`) — planned for when non-event push messages are needed
 - Card system not yet implemented — see Card system section above

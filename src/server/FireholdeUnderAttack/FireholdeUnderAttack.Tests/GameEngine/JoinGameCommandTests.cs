@@ -34,7 +34,7 @@ public class JoinGameCommandTests
         var state = BuildState(GameStateType.Initial);
 
         // Act
-        var events = new GameStateMachine(state).Handle(BuildCommand());
+        var events = new GameStateMachine(state).Handle(BuildCommand()).Events;
 
         // Assert
         var joined = Assert.IsType<PlayerJoinedEvent>(Assert.Single(events));
@@ -59,7 +59,7 @@ public class JoinGameCommandTests
         var state = BuildState(stateType);
 
         // Act
-        var events = new GameStateMachine(state).Handle(BuildCommand());
+        var events = new GameStateMachine(state).Handle(BuildCommand()).Events;
 
         // Assert
         var rejected = Assert.Single(events);
@@ -74,7 +74,7 @@ public class JoinGameCommandTests
         var command = BuildCommand(playerId: OwnerId); // owner is already in the game
 
         // Act
-        var events = new GameStateMachine(state).Handle(command);
+        var events = new GameStateMachine(state).Handle(command).Events;
 
         // Assert
         var rejected = Assert.IsType<CommandRejectedEvent>(Assert.Single(events));
@@ -92,7 +92,7 @@ public class JoinGameCommandTests
         // 4 players total now (owner + 3 added)
 
         // Act
-        var events = new GameStateMachine(state).Handle(BuildCommand());
+        var events = new GameStateMachine(state).Handle(BuildCommand()).Events;
 
         // Assert
         var rejected = Assert.Single(events);

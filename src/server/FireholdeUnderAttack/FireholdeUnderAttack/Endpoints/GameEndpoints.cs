@@ -38,7 +38,7 @@ public static class GameEndpoints
                     s.OwnerId,
                     s.SequenceNumber,
                     s.State.ToString(),
-                    s.ActivePlayerId,
+                    s.TurnMarker?.ActivePlayerId,
                     s.Round,
                     s.Players.Select(p => new PlayerStateResponse(p.PlayerId, p.PlayerName, p.CurrentTile, p.Health)).ToList(),
                     s.Board.Tiles.Select(t => new TileStateResponse(t.Id, t.Type.ToString())).ToList()

@@ -8,6 +8,7 @@ public static class GameConfig
     public const int StartingMaxHealth = 50;
     public const int StartingGold = 100;
     public const int BossStartingHealth = 500;
+    public const int ActionsPerTurn = 3;
 
     public static readonly IReadOnlyList<string> StartingActions = ["move", "attack"];
     
