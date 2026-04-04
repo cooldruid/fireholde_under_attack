@@ -6,4 +6,6 @@ namespace FireholdeUnderAttack.Commands;
 [JsonDerivedType(typeof(MoveCommand), nameof(MoveCommand))]
 [JsonDerivedType(typeof(StartGameCommand), nameof(StartGameCommand))]
 [JsonDerivedType(typeof(JoinGameCommand), nameof(JoinGameCommand))]
+[JsonDerivedType(typeof(BuyCardCommand), nameof(BuyCardCommand))]
+[JsonDerivedType(typeof(DoneShoppingCommand), nameof(DoneShoppingCommand))]
 public interface ICommand { }

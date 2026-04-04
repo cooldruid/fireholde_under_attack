@@ -81,6 +81,7 @@ new CommandSaga<MoveCommand>()
 3. Create `GameEngine/Sagas/XxxCommandSaga.cs` with a static `Saga` property
 4. Register it in the `Sagas` dictionary in `GameStateMachine`
 5. Add a test class `Tests/GameEngine/XxxCommandTests.cs`
+6. Add or update the command entry in `API.md` — include purpose, required state, and all fields
 
 ### Endpoint conventions
 
@@ -99,6 +100,7 @@ new CommandSaga<MoveCommand>()
 
 1. Create `Events/XxxEvent.cs` implementing `IEvent`
 2. Produce it from an `.Emit(...)` step in the relevant saga — no other wiring needed
+3. Add or update the event entry in `API.md` — include purpose and all fields
 
 ### Key components
 
@@ -107,7 +109,7 @@ new CommandSaga<MoveCommand>()
 - **`GameEngine/Saga/SagaContext.cs`** — per-execution data bag threaded through all steps
 - **`GameEngine/GameStateMachine.cs`** — two registries: `Type → ICommandSaga` for command dispatch, and `GameStateType → ICommand` for on-enter triggers; after every saga, if state changed and the new state has an on-enter command registered, it is auto-enqueued
 - **`GameEngine/GameInstance.cs`** — per-game actor; owns the command channel, `ProcessLoop`, and `BroadcastAsync` (serializes each event as JSON and pushes to the SignalR group)
-- **`GameEngine/GameState.cs`** — mutable state: player list, board, `TurnMarker`, `GameStateType`
+- **`GameEngine/GameState.cs`** — mutable state: player list, board, `TurnMarker`, `GameStateType`, `ShopInventory`
 - **`Managers/GameInstanceManager.cs`** — DI singleton; factory and registry for `GameInstance` objects
 - **`Endpoints/GameEndpoints.cs`** — minimal API endpoint definitions; one `Map(IEndpointRouteBuilder)` per domain area
 - **`Hubs/EventHub.cs`** — SignalR hub; clients call `JoinGame`/`LeaveGame` to subscribe to a game group
@@ -135,18 +137,18 @@ Returns `202 Accepted`. Results arrive asynchronously via SignalR — the method
 
 ```
 Initial → PlayerTurnStarting → PlayerTurn → PlayerActionEnding → PlayerTurn  (actions remain)
-                                           ↕ Shopping           → PlayerTurnStarting  (turn over)
-                                           ↕ TreasureRoom
-                                           ↕ (other tile states)
+                             ↑             ↕ Shopping           → PlayerActionEnding → PlayerTurnStarting (turn over)
+                             |             ↕ TreasureRoom                            → VillainTurn
+                             └──────────────────────────────────────────────────────┘
                              → VillainTurn → PlayerTurnStarting → ...
                                            → Final
 ```
 
 - **`Initial`** — lobby; players joining, game not yet started
-- **`PlayerTurnStarting`** — fresh turn setup; on-enter initializes `TurnMarker.ActionsRemaining = player.ActionsPerTurn`, emits `TurnChangedEvent`, transitions to `PlayerTurn`
-- **`PlayerTurn`** — active player can issue actions (move, use card, etc.); action sagas transition to `PlayerActionEnding` when done
-- **`PlayerActionEnding`** — on-enter decrements `ActionsRemaining`; routes back to `PlayerTurn` if actions remain, or to `PlayerTurnStarting` to advance the turn
-- **`Shopping`** — active player landed on a shop tile; can issue `BuyCardCommand` multiple times, exits via `DoneShoppingCommand` which transitions to `PlayerActionEnding`
+- **`PlayerTurnStarting`** — on-enter emits `TurnChangedEvent` (the **sole** place `TurnChangedEvent` is emitted), transitions to `PlayerTurn`; `TurnMarker` is already set to the correct player before entering this state
+- **`PlayerTurn`** — active player can issue actions (move, use card, etc.); all player-action sagas transition to `PlayerActionEnding` when done
+- **`PlayerActionEnding`** — on-enter decrements `ActionsRemaining`; if actions remain → `PlayerTurn`; if exhausted → calls `TurnHelper.AdvanceToNextPlayerOrVillain` → `PlayerTurnStarting` (next player) or `VillainTurn`
+- **`Shopping`** — active player landed on a shop tile; on-enter populates `GameState.ShopInventory` (3 cards at player level + 1 at level+1) and emits `ShopOpenedEvent`; player can issue `BuyCardCommand` multiple times, exits via `DoneShoppingCommand` which transitions to `PlayerActionEnding`
 - **`TreasureRoom`** — active player selects a free reward card; resolved by `SelectRewardCommand` or `SkipChoiceCommand`, both transition to `PlayerActionEnding`
 - **`VillainTurn`** — villain acts; driven by auto-enqueued `OnEnterCommand`
 - **`Final`** — game over
@@ -155,7 +157,7 @@ Tile states (`Shopping`, `TreasureRoom`, etc.) are entered via `.TransitionTo(..
 
 ### Turn tracking
 
-`GameState` holds a `TurnMarker` (replaces the old `ActivePlayerId` / `ActivePlayerIndex` fields):
+`GameState` holds a `TurnMarker`:
 
 ```csharp
 public class TurnMarker
@@ -166,66 +168,47 @@ public class TurnMarker
 }
 ```
 
-`Player.ActionsPerTurn` stores the player's base action budget (default 3, modifiable by effects). `EnterPlayerTurnStartingCommand` saga initializes `TurnMarker.ActionsRemaining = activePlayer.ActionsPerTurn` at the start of each new player's turn. Each action that costs actions decrements `ActionsRemaining`; `PlayerTurnStarting` on-enter checks whether to continue or advance.
+`Player.ActionsPerTurn` stores the player's base action budget (default 3, modifiable by effects). `TurnMarker.ActionsRemaining` is set to the active player's budget whenever the cursor advances — either in `StartGameCommandSaga` (first turn) or via `TurnHelper.AdvanceToNextPlayerOrVillain` (subsequent turns, called from `PlayerActionEndingOnEnterSaga`). Decrementing happens exclusively in `PlayerActionEndingOnEnterSaga` — sagas must **not** decrement actions themselves.
 
 ### On-enter triggers
 
 When `GameStateMachine` applies a `.TransitionTo(...)` from a saga, it checks `OnEnterSagas` (a `Dictionary<GameStateType, ICommandSaga>` on `GameStateMachine`). If the new state has an entry, a shared `OnEnterCommand` is auto-enqueued. On the next loop iteration, `Handle` routes it to the correct saga by looking up `OnEnterSagas[currentState]`.
 
-**No per-state command class is needed.** Register on-enter sagas directly in `GameStateMachine.OnEnterSagas`:
+**No per-state command class is needed.** Register on-enter sagas directly in `GameStateMachine.OnEnterSagas`. Currently registered:
 
-```csharp
-[GameStateType.PlayerActionEnding] = new CommandSaga<OnEnterCommand>()
-    .Execute(DecrementActions)
-    .Branch(HasActionsRemaining)
-        .Case(true,  s => s.TransitionTo(PlayerTurn))
-        .Default(    s => s.TransitionTo(PlayerTurnStarting))
-```
+| State | File | What it does |
+|---|---|---|
+| `PlayerTurnStarting` | `PlayerTurnStartingOnEnterSaga.cs` | Emits `TurnChangedEvent`, transitions to `PlayerTurn` |
+| `PlayerActionEnding` | `PlayerActionEndingOnEnterSaga.cs` | Decrements actions; routes to `PlayerTurn` or advances turn |
+| `Shopping` | `ShoppingOnEnterSaga.cs` | Populates `ShopInventory`, emits `ShopOpenedEvent` |
 
 - No `.WhenIn(...)` guard needed — the dispatch already guarantees the correct state is active
 - If a state has no entry in `OnEnterSagas`, transitioning to it enqueues nothing
 - On-enter sagas follow the same step API as command sagas (`Execute`, `Emit`, `TransitionTo`, `Branch`)
 
-### Card system (planned)
+### Card system
 
-Players have an inventory of cards. Cards are defined as pure data in `Constants/CardCatalog.cs` and applied by a `Cards/CardEffectApplicator.cs`. There is no card logic in sagas — sagas call the applicator.
+Cards are defined in `Catalogs/Cards/CardCatalog.cs` (aggregates level catalogs `Level1CardCatalog` through `Level5CardCatalog`). Each `CardDefinition` has `Id`, `Name`, `Description`, `Price`, `Level`, `Usage` (`Active`/`Passive`), `TargetType`, and `Effect` (a delegate — not serializable, never put in events). Players have a `Level` property (default 1) used for shop card selection.
 
-**Card definition shape:**
+`GameState.ShopInventory` (`List<string>`) holds the card IDs available in the current shop visit. It is populated by `ShoppingOnEnterSaga` and cleared by `DoneShoppingCommandSaga`.
 
-```csharp
-record CardDefinition(string Id, string Name, int Cost, CardUsage Usage, CardEffect Effect, PassiveTrigger? Trigger);
+**Shopping flow (implemented):**
 
-// Effects and triggers are sealed record hierarchies — pure data, no logic
-abstract record CardEffect;
-record HealEffect(int Amount) : CardEffect;
-// ...
+- `ShopOpenedEvent` — carries `List<ShopCardInfo>` (id, name, description, price — no logic/delegates); emitted by `ShoppingOnEnterSaga`
+- `BuyCardCommand` — validates active player, card is in `ShopInventory`, player can afford it; deducts gold, adds to `Player.Inventory`, emits `CardAcquiredEvent`; stays in `Shopping`
+- `DoneShoppingCommand` — clears `ShopInventory`, transitions to `PlayerActionEnding`
 
-abstract record PassiveTrigger;
-record OnMoveTrigger : PassiveTrigger;
-// ...
-```
+**Planned:**
 
-**Active cards** are played via `UseCardCommand` during a player's turn. Using a card does not consume the turn — the player still needs to move.
-
-**Passive cards** are applied by sagas at the right moment (e.g. `MoveCommandSaga` calls `CardEffectApplicator.ApplyPassivesOnMove`). The trigger type on the definition controls when they fire.
-
-**Relevant commands (planned):**
-
-- `BuyCardCommand` — buy from shop; deducts gold, adds card to inventory; player may buy multiple times per shop visit
-- `DoneShoppingCommand` — exits shop, costs one action, transitions to `PlayerTurnStarting`
-- `SelectRewardCommand` — pick a free quest reward card; transitions to `PlayerTurnStarting`
-- `SkipChoiceCommand` — decline a treasure/reward; transitions to `PlayerTurnStarting`
-- `UseCardCommand` — use an active card during `PlayerTurn`; does not cost an action
-
-**Relevant events (planned):**
-
-- `ShopOpenedEvent` — emitted by `EnterShoppingCommand`; carries available `CardDefinition` list for the client to display
-- `CardAcquiredEvent` — card added to a player's inventory
-- `CardUsedEvent` — active card was played
+- `SelectRewardCommand` — pick a free quest reward card; transitions to `PlayerActionEnding`
+- `SkipChoiceCommand` — decline a treasure/reward; transitions to `PlayerActionEnding`
+- `UseCardCommand` — use an active card during `PlayerTurn`; does not cost an action; emits `CardUsedEvent`
+- Passive card application — sagas call an applicator at the right moment (e.g. `MoveCommandSaga` for on-move passives)
 
 ### Notable gaps (work in progress)
 
-- On-enter sagas not yet registered in `GameStateMachine.OnEnterSagas` — `PlayerTurnStarting`, `PlayerActionEnding`, `VillainTurn`, `Shopping` all need entries
-- `MoveCommandSaga` still transitions to `PlayerTurnStarting` directly — should transition to `PlayerActionEnding` instead
+- `VillainTurn` has no on-enter saga — `VillainTurnCommand` must still be sent manually by the client
+- `TreasureRoom` state has no on-enter saga and no commands (`SelectRewardCommand`, `SkipChoiceCommand`) — not yet implemented
+- `UseCardCommand` not yet implemented
+- Passive card application not yet wired into sagas
 - No strongly-typed SignalR hub client interface yet (`Hub<T>`) — planned for when non-event push messages are needed
-- Card system not yet implemented — see Card system section above

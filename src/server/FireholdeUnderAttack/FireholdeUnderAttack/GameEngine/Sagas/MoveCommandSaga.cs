@@ -13,7 +13,6 @@ internal static class MoveCommandSaga
         .Validate(PlayerExists)
         .Validate(IsActivePlayer)
         .Execute(RollDiceAndMove)
-        .Execute(DecrementActions)
         .Branch(GetLandedTileType)
             .Case(BoardTileType.Shop,
                 saga => saga
@@ -22,7 +21,7 @@ internal static class MoveCommandSaga
             .Default(
                 saga => saga
                     .Emit(PlayerMoved)
-                    .TransitionTo(PlayerTurnStarting));
+                    .TransitionTo(PlayerActionEnding));
 
     private static bool PlayerExists(MoveCommand cmd, GameState state) =>
         state.Players.Any(p => p.PlayerId == cmd.PlayerId);
@@ -36,11 +35,6 @@ internal static class MoveCommandSaga
         var dice = new Random().Next(1, 7);
         ctx.Set("dice", dice);
         player.CurrentTile = (player.CurrentTile + dice) % state.Board.Tiles.Count;
-    }
-
-    private static void DecrementActions(MoveCommand cmd, GameState state, SagaContext ctx)
-    {
-        state.TurnMarker!.ActionsRemaining--;
     }
 
     private static BoardTileType GetLandedTileType(MoveCommand cmd, GameState state, SagaContext ctx)

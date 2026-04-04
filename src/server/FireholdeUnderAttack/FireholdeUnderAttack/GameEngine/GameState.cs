@@ -15,6 +15,7 @@ public class GameState
     public required Villain Villain { get; set; }
     public TurnMarker? TurnMarker { get; set; }
     public int Round { get; set; }
+    public List<string> ShopInventory { get; set; } = [];
 
     private GameState() { }
 

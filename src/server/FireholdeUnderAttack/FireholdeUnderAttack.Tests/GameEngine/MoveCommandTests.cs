@@ -35,7 +35,7 @@ public class MoveCommandTests
     // ── Broad flow tests ──────────────────────────────────────────────────────
 
     [Fact]
-    public void GameStateMachine_OnMoveCommand_EmitsMoveEventAndTransitionsToPlayerTurnStarting()
+    public void GameStateMachine_OnMoveCommand_EmitsMoveEventAndTransitionsToPlayerActionEnding()
     {
         // Arrange
         var state = BuildState(GameStateType.PlayerTurn);
@@ -52,11 +52,27 @@ public class MoveCommandTests
         Assert.NotEqual(initialTile, move.NewTileId);
         Assert.Equal(move.NewTileId, state.Players.First(p => p.PlayerId == PlayerId).CurrentTile);
 
-        Assert.Equal(GameStateType.PlayerTurnStarting, state.State);
+        Assert.Equal(GameStateType.PlayerActionEnding, state.State);
     }
 
     [Fact]
-    public void GameStateMachine_OnMoveCommand_DecrementsActionsRemaining()
+    public void GameStateMachine_OnMoveCommand_WhenLandsOnShop_TransitionsToShopping()
+    {
+        // Arrange
+        var state = BuildState(GameStateType.PlayerTurn);
+        // Place a Shop tile at every position so the player always lands on one
+        state.Board = Board.Create(Enumerable.Range(0, 36).Select(i => new Tile { Id = i, Type = BoardTileType.Shop }).ToList());
+
+        // Act
+        var result = new GameStateMachine(state).Handle(BuildCommand());
+
+        // Assert
+        Assert.Equal(GameStateType.Shopping, state.State);
+        Assert.NotNull(result.OnEnterCommand);
+    }
+
+    [Fact]
+    public void GameStateMachine_OnMoveCommand_DoesNotDecrementActionsRemaining()
     {
         // Arrange
         var state = BuildState(GameStateType.PlayerTurn);
@@ -64,8 +80,8 @@ public class MoveCommandTests
         // Act
         new GameStateMachine(state).Handle(BuildCommand());
 
-        // Assert
-        Assert.Equal(2, state.TurnMarker!.ActionsRemaining);
+        // Assert — decrement happens in PlayerActionEnding on-enter, not here
+        Assert.Equal(3, state.TurnMarker!.ActionsRemaining);
     }
 
     // ── Rejection scenarios ───────────────────────────────────────────────────

@@ -17,6 +17,8 @@ public class GameStateMachine(GameState gameState)
         [typeof(StartGameCommand)] = StartGameCommandSaga.Saga,
         [typeof(JoinGameCommand)] = JoinGameCommandSaga.Saga,
         [typeof(VillainTurnCommand)] = VillainTurnCommandSaga.Saga,
+        [typeof(BuyCardCommand)] = BuyCardCommandSaga.Saga,
+        [typeof(DoneShoppingCommand)] = DoneShoppingCommandSaga.Saga,
     };
 
     /// <summary>
@@ -26,10 +28,9 @@ public class GameStateMachine(GameState gameState)
     /// </summary>
     internal static readonly Dictionary<GameStateType, ICommandSaga> OnEnterSagas = new()
     {
-        // Register on-enter sagas here, e.g.:
-        // [GameStateType.PlayerActionEnding] = new CommandSaga<OnEnterCommand>()
-        //     .Execute(...)
-        //     .TransitionTo(...)
+        [GameStateType.PlayerTurnStarting] = PlayerTurnStartingOnEnterSaga.Saga,
+        [GameStateType.PlayerActionEnding] = PlayerActionEndingOnEnterSaga.Saga,
+        [GameStateType.Shopping] = ShoppingOnEnterSaga.Saga,
     };
 
     public HandleResult Handle(ICommand command)

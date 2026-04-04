@@ -16,7 +16,8 @@ public class Player
     public List<string> AvailableActions { get; set; } = [];
     public List<PlayerTrigger> Triggers { get; set; } = [];
     public int ActionsPerTurn { get; set; }
-    
+    public int Level { get; set; }
+
     private Player()
     { }
 
@@ -30,7 +31,8 @@ public class Player
         MaxHealth = GameConfig.StartingMaxHealth,
         Gold = GameConfig.StartingGold,
         AvailableActions = [.. GameConfig.StartingActions],
-        ActionsPerTurn = GameConfig.ActionsPerTurn
+        ActionsPerTurn = GameConfig.ActionsPerTurn,
+        Level = 1
     };
 }
 
