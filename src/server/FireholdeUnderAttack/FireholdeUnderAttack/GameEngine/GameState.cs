@@ -12,7 +12,8 @@ public class GameState
     public List<Player> Players { get; set; } = [];
     public GameStateType State { get; set; }
     public required Board Board { get; set; }
-    public required Villain Villain { get; set; }
+    public Villain? Villain { get; set; }
+    public List<Enemy> Enemies { get; set; } = [];
     public TurnMarker? TurnMarker { get; set; }
     public int Round { get; set; }
     public List<string> ShopInventory { get; set; } = [];
@@ -26,8 +27,7 @@ public class GameState
             OwnerId = gameOwnerId,
             Players = [Player.Create(gameOwnerId, 0, ownerName)],
             State = GameStateType.Initial,
-            Board = Board.Create(GameConfig.Board),
-            Villain = Villain.Create(GameConfig.BossStartingHealth)
+            Board = Board.Create(GameConfig.Board)
         };
     }
 }

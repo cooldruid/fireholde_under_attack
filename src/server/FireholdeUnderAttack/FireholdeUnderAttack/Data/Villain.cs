@@ -2,16 +2,19 @@ namespace FireholdeUnderAttack.Data;
 
 public class Villain
 {
-    public int MaxHealth { get; init; }
-    public int CurrentHealth { get; init; }
-    
-    private Villain()
-    { }
+    public Guid Id { get; init; }
+    public string Name { get; init; } = "";
+    public int MaxHealth { get; set; }
+    public int CurrentHealth { get; set; }
 
-    public static Villain Create(int maxHealth) =>
+    private Villain() { }
+
+    public static Villain Create(int playerCount) =>
         new()
         {
-            MaxHealth = maxHealth,
-            CurrentHealth = maxHealth
+            Id = Guid.NewGuid(),
+            Name = "Villain",
+            MaxHealth = GameConfig.BossHealthPerPlayer * playerCount,
+            CurrentHealth = GameConfig.BossHealthPerPlayer * playerCount
         };
 }

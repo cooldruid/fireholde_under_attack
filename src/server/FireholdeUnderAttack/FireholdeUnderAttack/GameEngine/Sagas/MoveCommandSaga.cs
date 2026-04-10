@@ -1,4 +1,6 @@
+using FireholdeUnderAttack.Catalogs.Classes;
 using FireholdeUnderAttack.Commands;
+using FireholdeUnderAttack.Constants;
 using FireholdeUnderAttack.Data;
 using FireholdeUnderAttack.Events;
 using FireholdeUnderAttack.GameEngine.Saga;
@@ -13,6 +15,7 @@ internal static class MoveCommandSaga
         .Validate(PlayerExists)
         .Validate(IsActivePlayer)
         .Execute(RollDiceAndMove)
+        .Execute(ApplyOnMovePassives)
         .Branch(GetLandedTileType)
             .Case(BoardTileType.Shop,
                 saga => saga
@@ -35,6 +38,24 @@ internal static class MoveCommandSaga
         var dice = new Random().Next(1, 7);
         ctx.Set("dice", dice);
         player.CurrentTile = (player.CurrentTile + dice) % state.Board.Tiles.Count;
+    }
+
+    private static void ApplyOnMovePassives(MoveCommand cmd, GameState state, SagaContext ctx)
+    {
+        var player = state.Players.First(p => p.PlayerId == cmd.PlayerId);
+        foreach (var cardId in player.Inventory.ToList())
+        {
+            if (CardCatalog.All.TryGetValue(cardId, out var card))
+                card.OnMove?.Invoke(state, cmd.PlayerId, null);
+        }
+
+        var landedTile = state.Board.Tiles[player.CurrentTile];
+        if (landedTile.Effects.Remove(TileEffects.ElementalSoul))
+        {
+            player.AttackDamage += 1;
+            ctx.Set("collectedSoul", true);
+            ClassCatalog.SpawnElementalSoul(state);
+        }
     }
 
     private static BoardTileType GetLandedTileType(MoveCommand cmd, GameState state, SagaContext ctx)

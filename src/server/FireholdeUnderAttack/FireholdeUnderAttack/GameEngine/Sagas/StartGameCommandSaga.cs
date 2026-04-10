@@ -28,6 +28,7 @@ internal static class StartGameCommandSaga
             ActionsRemaining = firstPlayer.ActionsPerTurn
         };
         state.Round = 1;
+        state.Villain = Villain.Create(state.Players.Count);
     }
 
     private static IEvent GameStarted(StartGameCommand _, GameState state) =>

@@ -19,6 +19,7 @@ public class GameStateMachine(GameState gameState)
         [typeof(VillainTurnCommand)] = VillainTurnCommandSaga.Saga,
         [typeof(BuyCardCommand)] = BuyCardCommandSaga.Saga,
         [typeof(DoneShoppingCommand)] = DoneShoppingCommandSaga.Saga,
+        [typeof(UseCardCommand)] = UseCardCommandSaga.Saga,
     };
 
     /// <summary>

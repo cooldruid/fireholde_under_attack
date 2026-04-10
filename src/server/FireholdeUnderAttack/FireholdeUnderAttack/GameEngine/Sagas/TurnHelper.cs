@@ -13,7 +13,7 @@ internal static class TurnHelper
     public static bool AdvanceToNextPlayerOrVillain(GameState state)
     {
         var nextIndex = (state.TurnMarker!.ActivePlayerIndex + 1) % state.Players.Count;
-        if (nextIndex == 0)
+        if (nextIndex == 0 && state.Players.Count > 1 && state.Villain != null)
         {
             state.TurnMarker.ActivePlayerId = null;
             state.TurnMarker.ActivePlayerIndex = -1;

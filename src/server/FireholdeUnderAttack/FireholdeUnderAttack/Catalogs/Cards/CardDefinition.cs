@@ -10,11 +10,13 @@ public record CardDefinition(
     string Description,
     int Price,
     int Level,
-    CardUsage Usage,
-    CardEffect Effect,
-    CardTargetType TargetType = CardTargetType.None
+    CardTargetType TargetType = CardTargetType.None,
+    CardEffect? ActiveEffect = null,
+    CardEffect? OnAcquire = null,
+    CardEffect? OnMove = null,
+    CardEffect? OnAttack = null,
+    CardEffect? OnTakeDamage = null,
+    CardEffect? OnDeath = null
 );
-
-public enum CardUsage { Active, Passive }
 
 public enum CardTargetType { None, Enemy, Ally }

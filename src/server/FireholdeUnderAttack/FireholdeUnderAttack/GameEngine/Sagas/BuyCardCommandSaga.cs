@@ -15,6 +15,7 @@ internal static class BuyCardCommandSaga
         .Validate(CardIsInShop)
         .Validate(CanAfford)
         .Execute(Purchase)
+        .Execute(ApplyOnAcquirePassive)
         .Emit(CardAcquired);
 
     private static bool PlayerExists(BuyCardCommand cmd, GameState state) =>
@@ -29,15 +30,26 @@ internal static class BuyCardCommandSaga
     private static bool CanAfford(BuyCardCommand cmd, GameState state)
     {
         var player = state.Players.First(p => p.PlayerId == cmd.PlayerId);
-        return player.Gold >= CardCatalog.All[cmd.CardId].Price;
+        return player.Gold >= EffectivePrice(cmd.CardId, player);
     }
 
     private static void Purchase(BuyCardCommand cmd, GameState state, SagaContext ctx)
     {
         var player = state.Players.First(p => p.PlayerId == cmd.PlayerId);
-        var card = CardCatalog.All[cmd.CardId];
-        player.Gold -= card.Price;
+        player.Gold -= EffectivePrice(cmd.CardId, player);
         player.Inventory.Add(cmd.CardId);
+    }
+
+    private static int EffectivePrice(string cardId, Data.Player buyer)
+    {
+        var basePrice = CardCatalog.All[cardId].Price;
+        return (int)(basePrice * (1 - buyer.ShopDiscountPercent / 100.0));
+    }
+
+    private static void ApplyOnAcquirePassive(BuyCardCommand cmd, GameState state, SagaContext ctx)
+    {
+        var card = CardCatalog.All[cmd.CardId];
+        card.OnAcquire?.Invoke(state, cmd.PlayerId, null);
     }
 
     private static IEvent CardAcquired(BuyCardCommand cmd, GameState state, SagaContext ctx) =>

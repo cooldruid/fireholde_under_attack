@@ -18,6 +18,7 @@ public class Tile
 {
     public int Id { get; set; }
     public BoardTileType Type { get; set; }
+    public List<string> Effects { get; set; } = [];
 }
 
 public enum BoardTileType

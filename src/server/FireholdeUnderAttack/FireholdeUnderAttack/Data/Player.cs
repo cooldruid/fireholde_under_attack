@@ -1,6 +1,3 @@
-using FireholdeUnderAttack.Cards;
-using FireholdeUnderAttack.GameEngine;
-
 namespace FireholdeUnderAttack.Data;
 
 public class Player
@@ -14,12 +11,25 @@ public class Player
     public int Gold { get; set; }
     public List<string> Inventory { get; set; } = [];
     public List<string> AvailableActions { get; set; } = [];
-    public List<PlayerTrigger> Triggers { get; set; } = [];
     public int ActionsPerTurn { get; set; }
     public int Level { get; set; }
 
-    private Player()
-    { }
+    // Combat modifiers — written by OnAcquire passives, read by combat/damage systems
+    public int AttackDamage { get; set; }
+    public int DamageReduction { get; set; }
+    public int EnemyDamageReduction { get; set; }
+
+    // Shop modifiers
+    public int ShopDiscountPercent { get; set; }
+    public bool CanSellCards { get; set; }
+
+    // Status flags
+    public bool IsInvincible { get; set; }
+
+    // Class-granted modifiers
+    public int AttackTargets { get; set; } = 1;
+
+    private Player() { }
 
     public static Player Create(Guid playerId, int index, string name) => new()
     {
@@ -32,12 +42,7 @@ public class Player
         Gold = GameConfig.StartingGold,
         AvailableActions = [.. GameConfig.StartingActions],
         ActionsPerTurn = GameConfig.ActionsPerTurn,
-        Level = 1
+        Level = 1,
+        AttackDamage = GameConfig.BaseAttackDamage
     };
 }
-
-public record PlayerTrigger(
-    string Id,
-    Func<GameState, Guid, bool> Condition,
-    CardEffect Effect
-);

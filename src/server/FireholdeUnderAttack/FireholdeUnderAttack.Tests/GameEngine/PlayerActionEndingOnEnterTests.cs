@@ -55,10 +55,26 @@ public class PlayerActionEndingOnEnterTests
     }
 
     [Fact]
-    public void GameStateMachine_OnEnterPlayerActionEnding_WhenLastActionAndLastPlayer_TransitionsToVillainTurn()
+    public void GameStateMachine_OnEnterPlayerActionEnding_WhenLastActionAndSoloPlayer_LoopsBackToPlayerTurn()
     {
         // Arrange
         var state = BuildState(actionsRemaining: 1, playerCount: 1);
+
+        // Act
+        new GameStateMachine(state).Handle(new OnEnterCommand());
+
+        // Assert
+        Assert.Equal(GameStateType.PlayerTurnStarting, state.State);
+    }
+
+    [Fact]
+    public void GameStateMachine_OnEnterPlayerActionEnding_WhenLastActionAndLastPlayerInMultiplayer_TransitionsToVillainTurn()
+    {
+        // Arrange
+        var state = BuildState(actionsRemaining: 1, playerCount: 2);
+        state.Villain = Villain.Create(2);
+        state.TurnMarker!.ActivePlayerIndex = 1;
+        state.TurnMarker.ActivePlayerId = state.Players.First(p => p.PlayerIndex == 1).PlayerId;
 
         // Act
         new GameStateMachine(state).Handle(new OnEnterCommand());
